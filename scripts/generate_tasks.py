@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
+import sys
 
 from route_env.graph_tasks import GenerateConfig, generate_tasks
 from route_env.io import write_jsonl
@@ -27,6 +29,9 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
+    out_path = Path(args.out)
+    if out_path == Path("/tasks.jsonl"):
+        parser.error('--out resolved to "/tasks.jsonl"; did you forget to set EXP first?')
     config = GenerateConfig(
         bbox=args.bbox,
         city=args.city,
@@ -37,9 +42,17 @@ def main() -> None:
         route_margin_m=args.route_margin_m,
         seed=args.seed,
     )
+    print(
+        f"generating {args.n} {args.network_type} tasks for {args.city} "
+        f"from bbox {','.join(str(x) for x in args.bbox)}",
+        file=sys.stderr,
+        flush=True,
+    )
+    print(f"output: {out_path}", file=sys.stderr, flush=True)
     tasks = generate_tasks(config, args.n)
-    write_jsonl(args.out, tasks)
-    print(f"wrote {len(tasks)} tasks to {args.out}")
+    print(f"writing {len(tasks)} tasks...", file=sys.stderr, flush=True)
+    write_jsonl(out_path, tasks)
+    print(f"wrote {len(tasks)} tasks to {out_path}")
 
 
 if __name__ == "__main__":

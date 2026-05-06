@@ -1,0 +1,20 @@
+{"prediction": {"turns": ["T11", "T13", "T4", "T21", "T6", "T22", "T18", "T8"]}, "task_id": "singapore_drive_000001"}
+{"prediction": {"turns": ["T3", "T16", "T2", "T24", "T19", "T21", "T5", "T4"]}, "task_id": "singapore_drive_000002"}
+{"prediction": {"turns": ["T4", "T10", "T11", "T12", "T19", "T24", "T13", "T1", "T20", "T7", "T14", "T2"]}, "task_id": "singapore_drive_000003"}
+{"prediction": {"turns": ["T21", "T23", "T9", "T22", "T19", "T2", "T10"]}, "task_id": "singapore_drive_000004"}
+{"prediction": {"turns": ["T4", "T2", "T5", "T14", "T7", "T22", "T10"]}, "task_id": "singapore_drive_000005"}
+{"prediction": {"turns": ["T18", "T5", "T22", "T3", "T19", "T21", "T6", "T10"]}, "task_id": "singapore_drive_000006"}
+{"prediction": {"turns": ["T13", "T17", "T4", "T18", "T14", "T2", "T7", "T16", "T11", "T6", "T24", "T1", "T8", "T3", "T5", "T19"]}, "task_id": "singapore_drive_000007"}
+{"prediction": {"turns": ["T3", "T14", "T11", "T10", "T20", "T4"]}, "task_id": "singapore_drive_000008"}
+{"prediction": {"turns": ["T24", "T5", "T22", "T16", "T10", "T13", "T11", "T19", "T21", "T7", "T2", "T1", "T6", "T8"]}, "task_id": "singapore_drive_000009"}
+{"prediction": {"turns": ["T7", "T6", "T10", "T22", "T4", "T12", "T9", "T24", "T5"]}, "task_id": "singapore_drive_000010"}
+{"prediction": {"turns": ["T16", "T21", "T4", "T9", "T11", "T17", "T19"]}, "task_id": "singapore_drive_000011"}
+{"prediction": {"turns": ["T18", "T17", "T19", "T4", "T16", "T14", "T12", "T20", "T10", "T8", "T15", "T3", "T5"]}, "task_id": "singapore_drive_000012"}
+{"prediction": {"turns": ["T6", "T24", "T5", "T21", "T9", "T3", "T20", "T15", "T22", "T18"]}, "task_id": "singapore_drive_000013"}
+{"prediction": {"turns": ["T21", "T9", "T4", "T23", "T12", "T10", "T16"]}, "task_id": "singapore_drive_000014"}
+{"prediction": {"turns": ["T3", "T21", "T7", "T8", "T19", "T18", "T9", "T6", "T2", "T23"]}, "task_id": "singapore_drive_000015"}
+{"prediction": {"turns": ["T7", "T17", "T12", "T8", "T15", "T13", "T21", "T4", "T19", "T14", "T18", "T6", "T24", "T23"]}, "task_id": "singapore_drive_000016"}
+{"prediction": {"turns": ["T13", "T5", "T23", "T24", "T10", "T6", "T19", "T16", "T17", "T22", "T1"]}, "task_id": "singapore_drive_000017"}
+{"prediction": {"turns": ["T17", "T24", "T1", "T11", "T8", "T5", "T18", "T10", "T13", "T16"]}, "task_id": "singapore_drive_000018"}
+{"prediction": {"turns": ["T14", "T15", "T6", "T22", "T1", "T10", "T20", "T12", "T9", "T17", "T4", "T24", "T19", "T23"]}, "task_id": "singapore_drive_000019"}
+{"prediction": {"turns": ["T20", "T7", "T21", "T18", "T12", "T2", "T14", "T19", "T5", "T8", "T4", "T3"]}, "task_id": "singapore_drive_000020"}

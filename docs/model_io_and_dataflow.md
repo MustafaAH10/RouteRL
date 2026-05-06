@@ -4,6 +4,10 @@ This is the canonical runbook for taking a fresh GPU instance from zero to
 generated RouteRL tasks, rendered maps, baseline evaluations, Hugging Face VLM
 predictions, and debug overlays.
 
+If this repo feels disorienting, read `docs/start_here.md` first. It explains
+the model input/output, `oracle`, `greedy`, result metrics, and the current
+recommended route-strip workflow.
+
 The current generated-data layout is:
 
 ```text
@@ -18,6 +22,18 @@ data/experiments/<experiment_name>/
 Use named experiment folders. Do not use flat folders like `data/rendered`,
 `data/debug`, `data/predictions`, or `data/tasks`; task IDs repeat across
 experiments.
+
+Always set `EXP` in the same shell where you run the commands. If `EXP` is
+empty, `"$EXP/tasks.jsonl"` becomes `/tasks.jsonl`, which writes outside the
+repo when running as root. `scripts/generate_tasks.py` now fails fast for that
+specific path, but setting `EXP` explicitly is still the habit to keep.
+
+Generation and rendering are separate:
+
+```text
+scripts/generate_tasks.py -> writes tasks.jsonl only
+scripts/render_tasks.py   -> writes map PNGs and updates image paths
+```
 
 ## 1. Rent And Enter A GPU Instance
 
@@ -126,19 +142,24 @@ Smoke test:
 npm run capture:streets-gl -- \
   --lat=1.2966 \
   --lon=103.7764 \
+  --pitch=65 \
+  --yaw=0 \
+  --distance=700 \
   --out=data/experiments/manual/streets_gl.png
 ```
 
 ## 5. Generate A Short Driving Experiment
 
-Create the experiment folder:
+Create the experiment folder. Run these two lines in the same shell as the
+commands below:
 
 ```bash
 EXP=data/experiments/short_500m_2km
 mkdir -p "$EXP"/{maps,predictions,results,overlays}
 ```
 
-Generate 20 Singapore driving tasks around central Singapore:
+Generate 20 Singapore driving tasks around central Singapore. This writes only
+`tasks.jsonl`; it does not create map images yet.
 
 ```bash
 python scripts/generate_tasks.py \
@@ -296,7 +317,8 @@ python scripts/evaluate_predictions.py \
 
 ## 8. Generate A Medium 2-6km Experiment
 
-Use a larger bbox and more checkpoints:
+Use a larger bbox and more checkpoints. As above, set `EXP`, generate
+`tasks.jsonl`, then render maps into that same experiment folder:
 
 ```bash
 EXP=data/experiments/medium_2_6km
@@ -336,7 +358,7 @@ from route_env.io import read_jsonl, write_jsonl
 from route_env.verify import verify_prediction
 tasks = read_jsonl("data/experiments/medium_2_6km/tasks.jsonl")
 preds = [
-    {"task_id": t["task_id"], "prediction": {"turns": [], "confidence": 0.0, "reason": "empty baseline"}}
+    {"task_id": t["task_id"], "prediction": {"turns": []}}
     for t in tasks
 ]
 results = [verify_prediction(t, p) for t, p in zip(tasks, preds)]
@@ -379,7 +401,7 @@ interface. They are not the recommended final long-route training format.
 
 ```bash
 EXP=data/experiments/long_8_25km_80cp_probe
-mkdir -p "$EXP"/{predictions,results}
+mkdir -p "$EXP"/{maps,predictions,results,overlays}
 
 python scripts/generate_tasks.py \
   --bbox 103.60,1.20,104.05,1.48 \
@@ -407,7 +429,7 @@ python scripts/evaluate_predictions.py \
 
 ```bash
 EXP=data/experiments/long_8_25km_200cp_probe
-mkdir -p "$EXP/maps"
+mkdir -p "$EXP"/{maps,predictions,results,overlays}
 
 python scripts/generate_tasks.py \
   --bbox 103.60,1.20,104.05,1.48 \
@@ -430,13 +452,117 @@ python scripts/render_tasks.py \
 The expected finding is label clutter: hundreds of visible `T` labels are not a
 good VLM input. Use route strips for long trips.
 
-## 10. What The Model Receives
+## 10. Build A Long Route-Strip Probe
+
+Route strips convert long flat tasks into one overview image plus several local
+segment images. Each segment has its own local `T01...` labels.
+
+```bash
+EXP=data/experiments/long_8_25km_route_strip_probe
+mkdir -p "$EXP"/{maps,predictions,results,overlays}
+
+python scripts/make_route_strip_tasks.py \
+  --tasks data/experiments/long_8_25km_80cp_probe/tasks.jsonl \
+  --out "$EXP/tasks.jsonl" \
+  --target-segment-distance-m 2500 \
+  --max-segment-checkpoints 32 \
+  --segment-margin-m 260 \
+  --limit 3
+
+python scripts/render_route_strip_tasks.py \
+  --tasks "$EXP/tasks.jsonl" \
+  --out-dir "$EXP/maps" \
+  --write-updated-tasks "$EXP/tasks.jsonl"
+
+python scripts/make_oracle_predictions.py \
+  --tasks "$EXP/tasks.jsonl" \
+  --out "$EXP/predictions/oracle.jsonl"
+
+python scripts/evaluate_predictions.py \
+  --tasks "$EXP/tasks.jsonl" \
+  --predictions "$EXP/predictions/oracle.jsonl" \
+  --out "$EXP/results/oracle.jsonl"
+```
+
+Run the VLM with a larger token budget because route-strip JSON contains one
+object per segment:
+
+```bash
+python scripts/run_hf_agent.py \
+  --tasks "$EXP/tasks.jsonl" \
+  --model Qwen/Qwen3-VL-8B-Instruct \
+  --out "$EXP/predictions/qwen3_vl_8b_strip_limit1.jsonl" \
+  --limit 1 \
+  --device auto \
+  --dtype bfloat16 \
+  --max-new-tokens 1536 \
+  --sanitize-labels
+```
+
+## 11. Browser Route Overlay
+
+Serve the repo and open the zero-bundler overlay viewer:
+
+```bash
+bash scripts/serve_overlay.sh --port 8000 --bind 0.0.0.0
+```
+
+Then open:
+
+```text
+http://localhost:8000/renderer/route_overlay.html?tasks=/data/experiments/long_8_25km_route_strip_probe/tasks.jsonl&predictions=/data/experiments/long_8_25km_route_strip_probe/predictions/oracle.jsonl&results=/data/experiments/long_8_25km_route_strip_probe/results/oracle.jsonl
+```
+
+This viewer draws RouteRL graph edges, oracle paths, agent paths, checkpoints,
+scores, and route-strip segment boxes directly from JSONL files. It does not
+need Node. Streets-GL remains optional 3D context; its source can be cloned under
+`external/streets-gl`, but the RouteRL verifier-aligned overlay is the browser
+viewer above.
+
+If the GPU box is remote and the public IP refuses port `8000`, use SSH or IDE
+port forwarding. `localhost` in your browser means your laptop unless the
+browser itself is running on the GPU box.
+
+## 12. Reproducible GPU And VeRL Prep
+
+On frequently replaced 8xH100 boxes, prefer the reproducible flow in:
+
+```text
+docs/reproducible_gpu_infra.md
+docs/verl_integration.md
+```
+
+Prepare route-strip trainer records:
+
+```bash
+python scripts/prepare_verl_dataset.py \
+  --tasks data/experiments/long_8_25km_route_strip_probe/tasks.jsonl \
+  --out data/experiments/long_8_25km_route_strip_probe/verl_train.jsonl \
+  --split train
+```
+
+Smoke-check a GPU node:
+
+```bash
+EXPECTED_GPU_COUNT=8 bash scripts/smoke_h100_instance.sh --expected-gpus 8
+```
+
+## 13. What The Model Receives
 
 The Hugging Face runner gives the model:
+
+For flat tasks:
 
 1. One rendered image from `task["images"]["map"]`.
 2. The driving prompt.
 3. A list of allowed visible sparse turn checkpoint labels.
+
+For route-strip tasks:
+
+1. One overview image from `task["images"]["overview"]`.
+2. One local segment image per segment from `task["images"]["segments"]`.
+3. The route-strip prompt.
+4. A per-segment list of allowed checkpoint labels.
 
 The model does **not** receive:
 
@@ -459,20 +585,18 @@ You are given a real driving map image. Roads are drawn with hierarchy styling, 
 Black T-labels mark sparse turn checkpoints and decision points. The T numbers are arbitrary labels, not route order. Infer a plausible short driving route from A to B by choosing only the checkpoints that the driver should physically pass through, in driving order. Do not invent labels.
 
 Return JSON only with exactly this shape:
-{"turns":["T1","T2"],"confidence":0.0,"reason":"brief"}
+{"turns":["T1","T2"]}
 ```
 
 Expected model output:
 
 ```json
 {
-  "turns": ["T6", "T11", "T4"],
-  "confidence": 0.7,
-  "reason": "brief"
+  "turns": ["T6", "T11", "T4"]
 }
 ```
 
-## 11. How OSM Becomes An Image
+## 14. How OSM Becomes An Image
 
 OpenStreetMap is structured geographic data, not just raster map tiles. OSMnx
 downloads a driving network and turns it into a directed graph:
@@ -504,7 +628,7 @@ red B
 
 The hidden graph is used for generation and evaluation, but not as model input.
 
-## 12. How Verification Works
+## 15. How Verification Works
 
 Evaluation expands the checkpoint prediction through the hidden graph:
 
@@ -533,7 +657,7 @@ max segment gap compared with oracle checkpoint spacing
 Empty `turns` is deliberately not a valid route proposal when a task has gold
 checkpoints.
 
-## 13. Existing Results To Compare Against
+## 16. Existing Results To Compare Against
 
 Current kept artifacts:
 
@@ -573,7 +697,7 @@ Qwen3-VL-8B clean sanitized, limit 2:
   valid_route=2/2
 ```
 
-## 14. Troubleshooting
+## 17. Troubleshooting
 
 If CUDA is not visible:
 
@@ -602,7 +726,7 @@ or results unless `--all-tasks` is passed.
 If model output contains impossible labels, use `--sanitize-labels` and inspect
 the `sanitization.rejected_turns` field in the prediction JSONL.
 
-## 15. Real-World Target Flow
+## 18. Real-World Target Flow
 
 For a query like:
 
@@ -626,7 +750,7 @@ natural language query
 The model is not being asked to know Singapore from memory. It is being asked to
 look at rendered real map observations and infer route proposals visually.
 
-## 16. Current Caveat
+## 19. Current Caveat
 
 Single-panel short routes are useful for debugging, but single-panel long routes
 become OCR/clutter tasks. The next interface should add:

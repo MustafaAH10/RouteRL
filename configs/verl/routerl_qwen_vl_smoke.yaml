@@ -1,0 +1,44 @@
+# Smoke configuration for adapting RouteRL to VeRL-style RLVR training.
+#
+# This is intentionally conservative: it names RouteRL artifacts, reward code,
+# and the intended model/runtime knobs without pretending that VeRL's upstream
+# trainer schema is stable across releases. Use docs/verl_integration.md before
+# converting this into a concrete upstream trainer launch.
+
+project: routerl
+experiment: qwen_vl_route_strip_smoke
+
+model:
+  name_or_path: Qwen/Qwen3-VL-8B-Instruct
+  revision: main
+  dtype: bfloat16
+
+data:
+  train_tasks: data/experiments/long_8_25km_route_strip_probe/tasks.jsonl
+  train_records: data/experiments/long_8_25km_route_strip_probe/verl_train.jsonl
+  image_root: .
+  task_type: route_strip
+
+reward:
+  module: route_env.reward
+  class: RouteRewarder
+  scalar_key: score
+  metrics:
+    - valid_schema
+    - valid_route
+    - checkpoint_reward
+    - length_ratio
+    - mean_route_distance_m
+
+runtime:
+  expected_gpus: 8
+  cuda: "12.4"
+  torch_index_url: https://download.pytorch.org/whl/cu124
+  hf_home: /mnt/hf
+  artifact_root: /mnt/routerl_artifacts
+
+rollout:
+  max_new_tokens: 1536
+  temperature: 0.7
+  top_p: 0.95
+  sanitize_labels: true

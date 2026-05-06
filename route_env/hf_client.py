@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -76,20 +77,26 @@ def load_vision_model(
 
 
 def generate_route_prediction(
-    image_path: str | Path,
+    image_path: str | Path | Sequence[str | Path],
     prompt: str,
     model: Any,
     processor: Any,
     max_new_tokens: int = 256,
+    image_captions: Sequence[str] | None = None,
 ) -> tuple[dict[str, Any], str]:
-    image = Image.open(image_path).convert("RGB")
+    image_paths = list(image_path) if isinstance(image_path, Sequence) and not isinstance(image_path, str | Path) else [image_path]
+    images = [Image.open(path).convert("RGB") for path in image_paths]
+    captions = list(image_captions or [])
+    content: list[dict[str, Any]] = []
+    for index, image in enumerate(images):
+        if index < len(captions):
+            content.append({"type": "text", "text": captions[index]})
+        content.append({"type": "image", "image": image})
+    content.append({"type": "text", "text": prompt})
     messages = [
         {
             "role": "user",
-            "content": [
-                {"type": "image", "image": image},
-                {"type": "text", "text": prompt},
-            ],
+            "content": content,
         }
     ]
     inputs = processor.apply_chat_template(
@@ -107,4 +114,3 @@ def generate_route_prediction(
     trimmed = [out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)]
     raw = processor.batch_decode(trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
     return extract_json(raw), raw
-

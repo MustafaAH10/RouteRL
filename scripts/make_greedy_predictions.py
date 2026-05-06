@@ -12,6 +12,27 @@ def point_for_checkpoint(task, label):
     return {"lat": checkpoint["lat"], "lon": checkpoint["lon"]}
 
 
+def greedy_turns(task, max_len: int) -> list[str]:
+    dest = {"lat": task["destination"]["lat"], "lon": task["destination"]["lon"]}
+    current = {"lat": task["origin"]["lat"], "lon": task["origin"]["lon"]}
+    unused = set(task["turn_checkpoints"])
+    turns = []
+    current_distance = haversine_m(current, dest)
+    for _ in range(max_len):
+        if not unused:
+            break
+        best = min(unused, key=lambda label: haversine_m(point_for_checkpoint(task, label), dest))
+        best_point = point_for_checkpoint(task, best)
+        best_distance = haversine_m(best_point, dest)
+        if best_distance >= current_distance:
+            break
+        turns.append(best)
+        unused.remove(best)
+        current = best_point
+        current_distance = best_distance
+    return turns
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--tasks", required=True)
@@ -20,27 +41,19 @@ def main() -> None:
     args = parser.parse_args()
     records = []
     for task in read_jsonl(args.tasks):
-        dest = {"lat": task["destination"]["lat"], "lon": task["destination"]["lon"]}
-        current = {"lat": task["origin"]["lat"], "lon": task["origin"]["lon"]}
-        unused = set(task["turn_checkpoints"])
-        turns = []
-        current_distance = haversine_m(current, dest)
-        for _ in range(args.max_len):
-            if not unused:
-                break
-            best = min(unused, key=lambda label: haversine_m(point_for_checkpoint(task, label), dest))
-            best_point = point_for_checkpoint(task, best)
-            best_distance = haversine_m(best_point, dest)
-            if best_distance >= current_distance:
-                break
-            turns.append(best)
-            unused.remove(best)
-            current = best_point
-            current_distance = best_distance
+        if task.get("task_type") == "route_strip":
+            prediction = {
+                "segments": [
+                    {"segment_id": segment["segment_id"], "turns": greedy_turns(segment, args.max_len)}
+                    for segment in task["segments"]
+                ],
+            }
+        else:
+            prediction = {"turns": greedy_turns(task, args.max_len)}
         records.append(
             {
                 "task_id": task["task_id"],
-                "prediction": {"turns": turns, "confidence": 0.3, "reason": "Greedy checkpoint-distance baseline."},
+                "prediction": prediction,
             }
         )
     write_jsonl(args.out, records)

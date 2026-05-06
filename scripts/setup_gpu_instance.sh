@@ -8,13 +8,18 @@ set -euo pipefail
 #   PYTHON_BIN=python3.11 bash scripts/setup_gpu_instance.sh
 #   TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124 bash scripts/setup_gpu_instance.sh
 #   HF_MODEL=Qwen/Qwen3-VL-4B-Instruct bash scripts/setup_gpu_instance.sh
+#   HF_MODEL_REVISION=<commit-or-tag> bash scripts/setup_gpu_instance.sh
+#   EXPECTED_GPU_COUNT=8 bash scripts/setup_gpu_instance.sh
 #   INSTALL_FLASH_ATTN=1 bash scripts/setup_gpu_instance.sh
 
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV_DIR="${VENV_DIR:-routerl}"
 HF_MODEL="${HF_MODEL:-Qwen/Qwen3-VL-4B-Instruct}"
+HF_MODEL_REVISION="${HF_MODEL_REVISION:-}"
+HF_CACHE_DIR="${HF_CACHE_DIR:-${HF_HOME:-}}"
 TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu124}"
 INSTALL_FLASH_ATTN="${INSTALL_FLASH_ATTN:-0}"
+EXPECTED_GPU_COUNT="${EXPECTED_GPU_COUNT:-0}"
 
 echo "Creating venv: ${VENV_DIR}"
 "${PYTHON_BIN}" -m venv "${VENV_DIR}"
@@ -49,10 +54,23 @@ print("cuda_available:", torch.cuda.is_available())
 if torch.cuda.is_available():
     print("cuda_device_count:", torch.cuda.device_count())
     print("cuda_device_0:", torch.cuda.get_device_name(0))
+expected = int("${EXPECTED_GPU_COUNT}")
+if expected and torch.cuda.device_count() < expected:
+    raise SystemExit(f"expected at least {expected} CUDA devices, found {torch.cuda.device_count()}")
 PY
 
 echo "Downloading Hugging Face model: ${HF_MODEL}"
-python scripts/download_hf_model.py --model "${HF_MODEL}"
+DOWNLOAD_ARGS=(--model "${HF_MODEL}")
+if [[ -n "${HF_MODEL_REVISION}" ]]; then
+  DOWNLOAD_ARGS+=(--revision "${HF_MODEL_REVISION}")
+fi
+if [[ -n "${HF_CACHE_DIR}" ]]; then
+  DOWNLOAD_ARGS+=(--cache-dir "${HF_CACHE_DIR}")
+fi
+python scripts/download_hf_model.py "${DOWNLOAD_ARGS[@]}"
+
+python -m unittest discover -s tests
+python -m pip check
 
 cat <<EOF
 

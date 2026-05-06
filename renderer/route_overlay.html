@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RouteRL Overlay</title>
+    <link rel="stylesheet" href="route_overlay.css" />
+  </head>
+  <body>
+    <main class="app">
+      <aside class="sidebar">
+        <div>
+          <h1>RouteRL Overlay</h1>
+          <p id="subtitle">Loading task data...</p>
+        </div>
+
+        <label class="field">
+          <span>Task</span>
+          <select id="taskSelect"></select>
+        </label>
+
+        <label class="field" id="panelField" hidden>
+          <span>Panel</span>
+          <select id="panelSelect"></select>
+        </label>
+
+        <div class="toggles">
+          <label><input type="checkbox" id="graphToggle" checked /> Graph</label>
+          <label><input type="checkbox" id="oracleToggle" checked /> Oracle</label>
+          <label><input type="checkbox" id="agentToggle" checked /> Agent</label>
+          <label><input type="checkbox" id="checkpointsToggle" checked /> Checkpoints</label>
+        </div>
+
+        <dl class="metrics" id="metrics"></dl>
+
+        <div class="legend">
+          <span><i class="swatch oracle"></i> Oracle</span>
+          <span><i class="swatch agent"></i> Agent</span>
+          <span><i class="dot start"></i> A</span>
+          <span><i class="dot end"></i> B</span>
+        </div>
+      </aside>
+
+      <section class="map-shell">
+        <svg id="map" role="img" aria-label="Route overlay map"></svg>
+      </section>
+    </main>
+
+    <script type="module" src="route_overlay.js?v=2"></script>
+  </body>
+</html>

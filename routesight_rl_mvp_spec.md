@@ -130,9 +130,7 @@ checkpoints:
 
 ```json
 {
-  "turns": ["T2", "T5", "T9"],
-  "confidence": 0.72,
-  "reason": "brief"
+  "turns": ["T2", "T5", "T9"]
 }
 ```
 
@@ -155,8 +153,7 @@ waypoints on the canonical map:
     {"x": 0.14, "y": 0.78},
     {"x": 0.33, "y": 0.62},
     {"x": 0.61, "y": 0.41}
-  ],
-  "confidence": 0.68
+  ]
 }
 ```
 
@@ -210,8 +207,7 @@ The model outputs per-segment turns:
     {"segment_id": "S1", "turns": ["T2", "T5"]},
     {"segment_id": "S2", "turns": ["T1", "T4", "T8"]},
     {"segment_id": "S3", "turns": ["T3"]}
-  ],
-  "confidence": 0.66
+  ]
 }
 ```
 
@@ -286,21 +282,21 @@ Example route-strip task:
   "city": "Singapore",
   "mode": "drive",
   "images": {
-    "overview": "data/experiments/route_strip_demo/maps/sg_drive_strip_000001/overview.png",
+    "overview": "data/experiments/route_strip_demo/maps/sg_drive_strip_000001_strip/overview.png",
     "segments": [
-      "data/experiments/route_strip_demo/maps/sg_drive_strip_000001/segment_1.png",
-      "data/experiments/route_strip_demo/maps/sg_drive_strip_000001/segment_2.png"
+      "data/experiments/route_strip_demo/maps/sg_drive_strip_000001_strip/s01.png",
+      "data/experiments/route_strip_demo/maps/sg_drive_strip_000001_strip/s02.png"
     ]
   },
   "segments": [
-    {"segment_id": "S1", "start": "S1_A", "end": "S1_B"},
-    {"segment_id": "S2", "start": "S2_A", "end": "S2_B"}
+    {"segment_id": "S01", "start": "S01_A", "end": "S01_B"},
+    {"segment_id": "S02", "start": "S02_A", "end": "S02_B"}
   ],
   "oracle": {
     "distance_m": 9300.0,
     "segment_gold_routes": {
-      "S1": ["T2", "T5"],
-      "S2": ["T1", "T8"]
+      "S01": ["T02", "T05"],
+      "S02": ["T01", "T08"]
     }
   }
 }

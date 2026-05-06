@@ -57,8 +57,7 @@ Model output:
 
 ```json
 {
-  "turns": ["T3", "T8", "T12"],
-  "confidence": 0.7
+  "turns": ["T3", "T8", "T12"]
 }
 ```
 
@@ -102,12 +101,25 @@ Output:
     {"segment_id": "S1", "turns": ["T2", "T5"]},
     {"segment_id": "S2", "turns": ["T1", "T4", "T8"]},
     {"segment_id": "S3", "turns": ["T3"]}
-  ],
-  "confidence": 0.66
+  ]
 }
 ```
 
 This gives the VLM enough local detail while preserving global route context.
+
+The current implementation supports a first route-strip scaffold:
+
+```text
+flat long task -> route-strip task
+overview.png + S01/S02/... local panels
+multi-image prompt
+per-segment verifier dispatch
+stitched route metrics
+```
+
+This scaffold uses oracle-derived segment endpoints. That is useful for making
+long-route local routing trainable now; a later corridor-planning phase should
+ask the model to choose the broad corridor itself.
 
 ## Reward For RL
 
@@ -166,4 +178,3 @@ Google/OSRM comparison route -> Streets-GL render
 
 Do not make Streets-GL the first canonical coordinate frame. The top-down 2D map
 is easier to score and align with OSM graph geometry.
-

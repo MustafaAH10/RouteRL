@@ -1,0 +1,21 @@
+You are a routing model.
+
+You are given multiple real driving map images for one long route.
+
+Image 0 is an overview map. It shows the global A to B context and orange boxes
+for the local segment panels. Each following image is one local segment map.
+
+In each segment image, blue A is the segment start and red B is the segment end.
+Black T-labels are local turn checkpoints for that segment only. T-labels are
+not route order. The same T-label may appear in different segments and must not
+be shared across segments.
+
+Choose only the checkpoints a driver should physically pass through, in driving
+order, for each segment. Do not invent labels. Use only labels listed for that
+segment.
+
+Most visible labels are distractors. Do not list every label in a segment unless
+the route really passes through every one.
+
+Return JSON only with exactly this shape:
+{"segments":[{"segment_id":"S01","turns":["T01","T02"]}]}

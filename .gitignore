@@ -9,7 +9,7 @@ data/rendered/
 data/predictions/
 data/results/
 data/debug/
-data/experiments/
 *.egg-info/
 node_modules/
 playwright-report/
+external/

@@ -10,7 +10,10 @@ const args = Object.fromEntries(
 const lat = args.lat || "1.2966";
 const lon = args.lon || "103.7764";
 const out = args.out || "data/rendered/streets_gl.png";
-const url = args.url || `https://streets.gl/#map=17/${lat}/${lon}`;
+const pitch = args.pitch || "65";
+const yaw = args.yaw || "0";
+const distance = args.distance || "700";
+const url = args.url || `https://streets.gl/#${lat},${lon},${pitch},${yaw},${distance}`;
 
 const browser = await chromium.launch({
   headless: true,
@@ -22,4 +25,3 @@ await page.waitForTimeout(Number(args.waitMs || 12000));
 await page.screenshot({ path: out, fullPage: false });
 await browser.close();
 console.log(`wrote ${out} from ${url}`);
-

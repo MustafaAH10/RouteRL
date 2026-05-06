@@ -17,16 +17,22 @@ def main() -> None:
     rng = random.Random(args.seed)
     records = []
     for task in read_jsonl(args.tasks):
-        labels = list(task["turn_checkpoints"])
-        k = rng.randint(0, min(args.max_len, len(labels))) if labels else 0
+        if task.get("task_type") == "route_strip":
+            prediction = {"segments": []}
+            for segment in task["segments"]:
+                labels = list(segment["turn_checkpoints"])
+                k = rng.randint(0, min(args.max_len, len(labels))) if labels else 0
+                prediction["segments"].append({"segment_id": segment["segment_id"], "turns": rng.sample(labels, k)})
+        else:
+            labels = list(task["turn_checkpoints"])
+            k = rng.randint(0, min(args.max_len, len(labels))) if labels else 0
+            prediction = {
+                "turns": rng.sample(labels, k),
+            }
         records.append(
             {
                 "task_id": task["task_id"],
-                "prediction": {
-                    "turns": rng.sample(labels, k),
-                    "confidence": 0.1,
-                    "reason": "Random turn-checkpoint baseline.",
-                },
+                "prediction": prediction,
             }
         )
     write_jsonl(args.out, records)

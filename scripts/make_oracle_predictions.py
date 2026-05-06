@@ -13,14 +13,24 @@ def main() -> None:
     args = parser.parse_args()
     records = []
     for task in read_jsonl(args.tasks):
+        if task.get("task_type") == "route_strip":
+            prediction = {
+                "segments": [
+                    {
+                        "segment_id": segment["segment_id"],
+                        "turns": segment["oracle"]["gold_turn_route"],
+                    }
+                    for segment in task["segments"]
+                ],
+            }
+        else:
+            prediction = {
+                "turns": task["oracle"]["gold_turn_route"],
+            }
         records.append(
             {
                 "task_id": task["task_id"],
-                "prediction": {
-                    "turns": task["oracle"]["gold_turn_route"],
-                    "confidence": 1.0,
-                    "reason": "Hidden sparse-turn oracle baseline.",
-                },
+                "prediction": prediction,
             }
         )
     write_jsonl(args.out, records)

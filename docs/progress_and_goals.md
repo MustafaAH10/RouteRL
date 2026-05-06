@@ -27,7 +27,7 @@ natural language query
 - The expected prediction schema is now:
 
 ```json
-{"turns":["T3","T8","T12"],"confidence":0.7,"reason":"brief"}
+{"turns":["T3","T8","T12"]}
 ```
 
 - The verifier maps predicted `T` checkpoints back to hidden OSM node IDs,
@@ -38,12 +38,18 @@ natural language query
 - The local model-server path has been removed from the project direction. GPU
   inference is via Hugging Face/Transformers.
 - Streets-GL remains a visualization layer, not the verifier or source of truth.
+- Route-strip task generation and rendering now produce overview images plus
+  local segment panels for long routes.
+- The Hugging Face runner can send multi-image route-strip prompts, and the
+  verifier can dispatch route-strip predictions through per-segment rewards.
+- Reproducible GPU scaffolding exists for H100 smoke checks, model prefetching,
+  and VeRL-style dataset/reward adapters.
 
 ## What Is Not Built Yet
 
-- Route-strip/segment-map generation for long or cross-island trips.
-- Multi-image VLM input for overview + local panels.
-- Segment stitching rewards.
+- Production-scale route-strip training runs on 8xH100.
+- A pinned dependency lockfile or published immutable Docker image.
+- Full VeRL trainer wiring against a pinned upstream VeRL release.
 - Turn restriction handling beyond directed one-way graph constraints.
 - Geocoding from natural-language locations such as `City Hall MRT` and
   `Orchard Road`.

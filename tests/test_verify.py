@@ -56,7 +56,7 @@ def make_linear_task(num_turns: int = 2) -> dict:
 class VerifyPredictionTest(unittest.TestCase):
     def test_oracle_scores_perfectly(self) -> None:
         task = make_linear_task()
-        result = verify_prediction(task, {"prediction": {"turns": ["T1", "T2"], "confidence": 1.0}})
+        result = verify_prediction(task, {"prediction": {"turns": ["T1", "T2"]}})
         self.assertTrue(result["valid_schema"])
         self.assertTrue(result["valid_route"])
         self.assertEqual(result["checkpoint_reward"], 1.0)
@@ -64,21 +64,21 @@ class VerifyPredictionTest(unittest.TestCase):
 
     def test_empty_turns_cannot_get_success_score(self) -> None:
         task = make_linear_task()
-        result = verify_prediction(task, {"prediction": {"turns": [], "confidence": 0.0}})
+        result = verify_prediction(task, {"prediction": {"turns": []}})
         self.assertFalse(result["valid_route"])
         self.assertEqual(result["checkpoint_reward"], 0.0)
         self.assertLess(result["score"], 0.75)
 
     def test_unknown_turn_invalidates_route(self) -> None:
         task = make_linear_task()
-        result = verify_prediction(task, {"prediction": {"turns": ["T1", "T99"], "confidence": 0.5}})
+        result = verify_prediction(task, {"prediction": {"turns": ["T1", "T99"]}})
         self.assertFalse(result["valid_route"])
         self.assertEqual(result["format_reward"], 0.0)
         self.assertEqual(result["unknown_turns"], ["T99"])
 
     def test_non_string_turns_fail_schema_and_route(self) -> None:
         task = make_linear_task()
-        result = verify_prediction(task, {"prediction": {"turns": ["T1", 2], "confidence": 0.5}})
+        result = verify_prediction(task, {"prediction": {"turns": ["T1", 2]}})
         self.assertFalse(result["valid_schema"])
         self.assertFalse(result["valid_turn_list"])
         self.assertFalse(result["valid_route"])
@@ -86,9 +86,40 @@ class VerifyPredictionTest(unittest.TestCase):
     def test_long_gold_route_is_not_penalized_for_its_own_turn_count(self) -> None:
         task = make_linear_task(num_turns=16)
         gold = task["oracle"]["gold_turn_route"]
-        result = verify_prediction(task, {"prediction": {"turns": gold, "confidence": 1.0}})
+        result = verify_prediction(task, {"prediction": {"turns": gold}})
         self.assertTrue(result["valid_route"])
         self.assertEqual(result["turn_count_penalty"], 1.0)
+        self.assertAlmostEqual(result["score"], 1.0)
+
+    def test_route_strip_oracle_scores_perfectly(self) -> None:
+        first = make_linear_task(num_turns=2)
+        first["task_id"] = "synthetic_strip_s01"
+        first["segment_id"] = "S01"
+        second = make_linear_task(num_turns=2)
+        second["task_id"] = "synthetic_strip_s02"
+        second["segment_id"] = "S02"
+        strip = {
+            "task_id": "synthetic_strip",
+            "task_type": "route_strip",
+            "segments": [first, second],
+            "oracle": {
+                "distance_m": first["oracle"]["distance_m"] + second["oracle"]["distance_m"],
+                "geometry": first["oracle"]["geometry"] + second["oracle"]["geometry"][1:],
+            },
+        }
+        result = verify_prediction(
+            strip,
+            {
+                "prediction": {
+                    "segments": [
+                        {"segment_id": "S01", "turns": ["T1", "T2"]},
+                        {"segment_id": "S02", "turns": ["T1", "T2"]},
+                    ]
+                }
+            },
+        )
+        self.assertTrue(result["valid_schema"])
+        self.assertTrue(result["valid_route"])
         self.assertAlmostEqual(result["score"], 1.0)
 
 

@@ -101,17 +101,11 @@ def checkpoint_alignment_reward(turns: list[str], gold_turns: list[str]) -> tupl
     return reward, coverage, precision, order
 
 
-def verify_prediction(task: dict[str, Any], prediction_record: dict[str, Any]) -> dict[str, Any]:
+def verify_flat_prediction(task: dict[str, Any], prediction_record: dict[str, Any]) -> dict[str, Any]:
     prediction = prediction_record.get("prediction", prediction_record)
     raw_turns = prediction.get("turns") if isinstance(prediction, dict) else None
     valid_turn_list = isinstance(raw_turns, list) and all(isinstance(turn, str) for turn in raw_turns)
-    confidence = prediction.get("confidence") if isinstance(prediction, dict) else None
-    reason = prediction.get("reason") if isinstance(prediction, dict) else None
-    valid_confidence = confidence is None or (
-        isinstance(confidence, int | float) and math.isfinite(float(confidence)) and 0.0 <= float(confidence) <= 1.0
-    )
-    valid_reason = reason is None or isinstance(reason, str)
-    valid_schema = isinstance(prediction, dict) and valid_turn_list and valid_confidence and valid_reason
+    valid_schema = isinstance(prediction, dict) and valid_turn_list
     turns = dedupe_consecutive(raw_turns if valid_turn_list else [])
     checkpoints = set(task["turn_checkpoints"])
     unknown = [turn for turn in turns if turn not in checkpoints]
@@ -171,8 +165,6 @@ def verify_prediction(task: dict[str, Any], prediction_record: dict[str, Any]) -
         "task_id": task["task_id"],
         "valid_schema": valid_schema,
         "valid_turn_list": valid_turn_list,
-        "valid_confidence": valid_confidence,
-        "valid_reason": valid_reason,
         "valid_route": valid_route,
         "unknown_turn_count": len(unknown),
         "unknown_turns": unknown,
@@ -204,3 +196,98 @@ def verify_prediction(task: dict[str, Any], prediction_record: dict[str, Any]) -
         "agent_osm_route_expanded": expanded_path,
         "agent_geometry": [latlon_to_lonlat(p) for p in agent_geometry],
     }
+
+
+def verify_strip_prediction(task: dict[str, Any], prediction_record: dict[str, Any]) -> dict[str, Any]:
+    prediction = prediction_record.get("prediction", prediction_record)
+    raw_segments = prediction.get("segments") if isinstance(prediction, dict) else None
+    valid_segment_list = isinstance(raw_segments, list) and all(isinstance(segment, dict) for segment in raw_segments)
+    by_segment = {
+        str(segment.get("segment_id")): segment
+        for segment in raw_segments
+        if isinstance(segment, dict) and isinstance(segment.get("segment_id"), str)
+    } if valid_segment_list else {}
+    segment_results = []
+    stitched_geometry: list[dict[str, float]] = []
+    stitched_route: list[str] = []
+    all_valid = valid_segment_list
+    for segment_task in task.get("segments", []):
+        segment_id = segment_task["segment_id"]
+        segment_prediction = by_segment.get(segment_id, {"turns": []})
+        result = verify_flat_prediction(segment_task, {"task_id": task["task_id"], "prediction": segment_prediction})
+        segment_results.append(result)
+        all_valid = all_valid and result["valid_route"]
+        if result["agent_geometry"]:
+            points = [lonlat_to_latlon(point) for point in result["agent_geometry"]]
+            if stitched_geometry:
+                points = points[1:]
+            stitched_geometry.extend(points)
+        expanded = result.get("agent_osm_route_expanded", [])
+        if expanded:
+            if stitched_route:
+                expanded = expanded[1:]
+            stitched_route.extend(expanded)
+
+    oracle_geometry = [lonlat_to_latlon(point) for point in task["oracle"]["geometry"]]
+    oracle_distance = float(task["oracle"]["distance_m"])
+    agent_distance_m = sum(
+        result["agent_distance_m"]
+        for result in segment_results
+        if isinstance(result.get("agent_distance_m"), int | float) and math.isfinite(result["agent_distance_m"])
+    )
+    length_ratio = agent_distance_m / oracle_distance if all_valid and oracle_distance > 0 else math.inf
+    mean_distance_m = mean_bidirectional_distance_m(stitched_geometry, oracle_geometry) if all_valid else math.inf
+    distance_ratio_reward = math.exp(-abs(math.log(length_ratio))) if math.isfinite(length_ratio) and length_ratio > 0 else 0.0
+    similarity_reward = math.exp(-mean_distance_m / 100) if math.isfinite(mean_distance_m) else 0.0
+    segment_score = sum(result["score"] for result in segment_results) / len(segment_results) if segment_results else 0.0
+    route_validity_reward = 1.0 if all_valid else 0.0
+    score = 0.70 * segment_score + 0.15 * route_validity_reward + 0.10 * distance_ratio_reward + 0.05 * similarity_reward
+    unknown_turns = [
+        {"segment_id": result["task_id"].rsplit("_", 1)[-1].upper(), "turns": result["unknown_turns"]}
+        for result in segment_results
+        if result["unknown_turns"]
+    ]
+
+    return {
+        "task_id": task["task_id"],
+        "task_type": "route_strip",
+        "valid_schema": isinstance(prediction, dict) and valid_segment_list,
+        "valid_turn_list": valid_segment_list,
+        "valid_route": all_valid,
+        "unknown_turn_count": sum(result["unknown_turn_count"] for result in segment_results),
+        "unknown_turns": unknown_turns,
+        "num_predicted_turns": sum(result["num_predicted_turns"] for result in segment_results),
+        "num_gold_turns": sum(result["num_gold_turns"] for result in segment_results),
+        "num_expanded_nodes": len(stitched_route),
+        "start_error_m": 0.0 if all_valid else math.inf,
+        "end_error_m": 0.0 if all_valid else math.inf,
+        "agent_distance_m": agent_distance_m if all_valid else math.inf,
+        "oracle_distance_m": oracle_distance,
+        "length_ratio": length_ratio,
+        "max_segment_length_m": max((result["max_segment_length_m"] for result in segment_results), default=math.inf),
+        "expected_max_segment_length_m": max((result["expected_max_segment_length_m"] for result in segment_results), default=math.inf),
+        "hausdorff_distance_m": hausdorff_distance_m(stitched_geometry, oracle_geometry) if all_valid else math.inf,
+        "mean_route_distance_m": mean_distance_m,
+        "format_reward": 1.0 if isinstance(prediction, dict) and valid_segment_list and not unknown_turns else 0.0,
+        "endpoint_reward": route_validity_reward,
+        "route_validity_reward": route_validity_reward,
+        "distance_ratio_reward": distance_ratio_reward,
+        "similarity_reward": similarity_reward,
+        "checkpoint_reward": segment_score,
+        "checkpoint_coverage": sum(result["checkpoint_coverage"] for result in segment_results) / len(segment_results) if segment_results else 0.0,
+        "checkpoint_precision": sum(result["checkpoint_precision"] for result in segment_results) / len(segment_results) if segment_results else 0.0,
+        "checkpoint_order": sum(result["checkpoint_order"] for result in segment_results) / len(segment_results) if segment_results else 0.0,
+        "max_gap_reward": sum(result["max_gap_reward"] for result in segment_results) / len(segment_results) if segment_results else 0.0,
+        "loop_penalty": min((result["loop_penalty"] for result in segment_results), default=0.0),
+        "turn_count_penalty": min((result["turn_count_penalty"] for result in segment_results), default=0.0),
+        "score": max(0.0, min(1.0, score)),
+        "agent_osm_route_expanded": stitched_route,
+        "agent_geometry": [latlon_to_lonlat(point) for point in stitched_geometry],
+        "segment_results": segment_results,
+    }
+
+
+def verify_prediction(task: dict[str, Any], prediction_record: dict[str, Any]) -> dict[str, Any]:
+    if task.get("task_type") == "route_strip":
+        return verify_strip_prediction(task, prediction_record)
+    return verify_flat_prediction(task, prediction_record)
