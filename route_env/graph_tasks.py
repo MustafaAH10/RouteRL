@@ -210,7 +210,7 @@ def build_task(
         "task_bbox": task_bbox,
         "origin": {**node_point(graph, origin_node), "osm_id": int(origin_node), "label": "A"},
         "destination": {**node_point(graph, destination_node), "osm_id": int(destination_node), "label": "B"},
-        "images": {"map": f"data/rendered/{task_id}/map.png"},
+        "images": {"map": f"data/experiments/manual/maps/{task_id}/map.png"},
         "turn_checkpoints": checkpoints,
         "graph": {
             "nodes": graph_nodes,

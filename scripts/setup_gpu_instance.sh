@@ -62,19 +62,19 @@ Run a one-task prediction:
 
   source ${VENV_DIR}/bin/activate
   python scripts/run_hf_agent.py \\
-    --tasks data/tasks/demo.jsonl \\
+    --tasks data/experiments/demo/tasks.jsonl \\
     --model ${HF_MODEL} \\
-    --out data/predictions/qwen3_vl_4b_hf.jsonl \\
+    --out data/experiments/demo/predictions/hf_predictions.jsonl \\
     --limit 1 \\
     --device auto \\
     --dtype bfloat16 \\
-    --max-new-tokens 512
+    --max-new-tokens 512 \\
+    --sanitize-labels
 
 Evaluate:
 
   python scripts/evaluate_predictions.py \\
-    --tasks data/tasks/demo.jsonl \\
-    --predictions data/predictions/qwen3_vl_4b_hf.jsonl \\
-    --out data/results/qwen3_vl_4b_hf.jsonl
+    --tasks data/experiments/demo/tasks.jsonl \\
+    --predictions data/experiments/demo/predictions/hf_predictions.jsonl \\
+    --out data/experiments/demo/results/hf_predictions.jsonl
 EOF
-

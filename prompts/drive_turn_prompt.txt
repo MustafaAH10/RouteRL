@@ -4,9 +4,10 @@ You are given a real driving map image. Roads are drawn with hierarchy styling,
 one-way arrows show directed streets where known, the blue marker A is the
 start, and the red marker B is the destination.
 
-Black T-labels mark sparse turn checkpoints and decision points. Infer a
-plausible short driving route from A to B by choosing only the checkpoints that
-the driver should pass through. Do not invent labels.
+Black T-labels mark sparse turn checkpoints and decision points. The T numbers
+are arbitrary labels, not route order. Infer a plausible short driving route
+from A to B by choosing only the checkpoints that the driver should physically
+pass through, in driving order. Do not invent labels.
 
 Return JSON only with exactly this shape:
 {"turns":["T1","T2"],"confidence":0.0,"reason":"brief"}

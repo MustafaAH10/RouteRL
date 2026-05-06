@@ -15,16 +15,18 @@ def main() -> None:
     parser.add_argument("--tasks", required=True)
     parser.add_argument("--predictions", required=True)
     parser.add_argument("--results", required=True)
-    parser.add_argument("--out-dir", default="data/debug")
+    parser.add_argument("--out-dir", default="data/experiments/manual/overlays")
+    parser.add_argument("--all-tasks", action="store_true", help="render every task, even without a prediction/result")
     args = parser.parse_args()
     tasks = {task["task_id"]: task for task in read_jsonl(args.tasks)}
     preds = {pred["task_id"]: pred for pred in read_jsonl(args.predictions)}
     results = {result["task_id"]: result for result in read_jsonl(args.results)}
-    for task_id, task in tqdm(tasks.items(), desc="debug"):
+    task_ids = list(tasks) if args.all_tasks else [task_id for task_id in tasks if task_id in preds or task_id in results]
+    for task_id in tqdm(task_ids, desc="debug"):
+        task = tasks[task_id]
         render_debug_overlay(task, preds.get(task_id), results.get(task_id), Path(args.out_dir) / f"{task_id}.png")
     print(f"wrote overlays to {args.out_dir}")
 
 
 if __name__ == "__main__":
     main()
-

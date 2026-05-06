@@ -56,12 +56,118 @@ def _graph_edges(task: dict[str, Any]) -> list[dict[str, Any]]:
     return task.get("graph", {}).get("edges", [])
 
 
+def _label_number(label: str) -> int:
+    try:
+        return int(label.removeprefix("T"))
+    except ValueError:
+        return 10_000
+
+
+def _overlap_area(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
+    left = max(a[0], b[0])
+    bottom = max(a[1], b[1])
+    right = min(a[2], b[2])
+    top = min(a[3], b[3])
+    if right <= left or top <= bottom:
+        return 0.0
+    return (right - left) * (top - bottom)
+
+
+def _label_candidates() -> list[tuple[int, int]]:
+    return [
+        (0, 14),
+        (18, 8),
+        (-18, 8),
+        (18, -8),
+        (-18, -8),
+        (0, -16),
+        (28, 0),
+        (-28, 0),
+        (32, 16),
+        (-32, 16),
+        (32, -16),
+        (-32, -16),
+        (0, 30),
+        (0, -32),
+        (44, 0),
+        (-44, 0),
+    ]
+
+
+def _draw_checkpoint_labels(
+    fig: Any,
+    ax: Any,
+    checkpoints: dict[str, Any],
+    *,
+    fontsize: float,
+    marker_size: float,
+    label_alpha: float,
+) -> None:
+    fig.canvas.draw()
+    dpi_scale = fig.dpi / 72.0
+    placed: list[tuple[float, float, float, float]] = []
+    candidates = _label_candidates()
+
+    for label, point in sorted(checkpoints.items(), key=lambda item: _label_number(item[0])):
+        ax.scatter(point["lon"], point["lat"], s=marker_size, color="#111111", edgecolor="white", linewidth=0.7, zorder=5)
+        px, py = ax.transData.transform((point["lon"], point["lat"]))
+        # Conservative text box estimate in display pixels. The actual bbox is
+        # drawn by matplotlib, this is only for collision avoidance.
+        width = max(24.0, 9.0 * len(label) + 12.0)
+        height = 21.0
+
+        best_offset = candidates[0]
+        best_box: tuple[float, float, float, float] | None = None
+        best_cost = float("inf")
+        for dx_pt, dy_pt in candidates:
+            dx_px = dx_pt * dpi_scale
+            dy_px = dy_pt * dpi_scale
+            cx = px + dx_px
+            cy = py + dy_px
+            box = (cx - width / 2, cy - height / 2, cx + width / 2, cy + height / 2)
+            overlap = sum(_overlap_area(box, existing) for existing in placed)
+            distance_cost = (dx_pt * dx_pt + dy_pt * dy_pt) ** 0.5
+            cost = overlap * 10.0 + distance_cost
+            if cost < best_cost:
+                best_cost = cost
+                best_offset = (dx_pt, dy_pt)
+                best_box = box
+
+        if best_box is not None:
+            placed.append(best_box)
+        ax.annotate(
+            label,
+            xy=(point["lon"], point["lat"]),
+            xytext=best_offset,
+            textcoords="offset points",
+            fontsize=fontsize,
+            color="#111111",
+            ha="center",
+            va="center",
+            zorder=6,
+            bbox={"boxstyle": "round,pad=0.18", "facecolor": "white", "edgecolor": "#cfcfcf", "alpha": label_alpha},
+            arrowprops={
+                "arrowstyle": "-",
+                "color": "#505050",
+                "alpha": 0.45,
+                "linewidth": 0.55,
+                "shrinkA": 2,
+                "shrinkB": 3,
+            }
+            if abs(best_offset[0]) + abs(best_offset[1]) > 18
+            else None,
+        )
+
+
 def render_task(task: dict[str, Any], out_path: str | Path, show_labels: bool = True) -> None:
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     west, south, east, north = task["task_bbox"]
     fig, ax = plt.subplots(figsize=(10, 10), dpi=180)
     ax.set_facecolor("#f8f8f4")
+    ax.set_xlim(west, east)
+    ax.set_ylim(south, north)
+    ax.set_aspect("equal", adjustable="box")
 
     for edge in _graph_edges(task):
         xs, ys = _line_xy(edge["geometry"])
@@ -70,20 +176,11 @@ def render_task(task: dict[str, Any], out_path: str | Path, show_labels: bool = 
         if edge.get("oneway"):
             _draw_direction_arrow(ax, edge["geometry"])
 
-    for label, point in task["turn_checkpoints"].items():
-        ax.scatter(point["lon"], point["lat"], s=42, color="#111111", edgecolor="white", linewidth=0.7, zorder=5)
-        if show_labels:
-            ax.text(
-                point["lon"],
-                point["lat"],
-                label,
-                fontsize=8.0,
-                color="#111111",
-                ha="left",
-                va="bottom",
-                zorder=6,
-                bbox={"boxstyle": "round,pad=0.16", "facecolor": "white", "edgecolor": "#d6d6d6", "alpha": 0.9},
-            )
+    if show_labels:
+        _draw_checkpoint_labels(fig, ax, task["turn_checkpoints"], fontsize=8.5, marker_size=42, label_alpha=0.92)
+    else:
+        for point in task["turn_checkpoints"].values():
+            ax.scatter(point["lon"], point["lat"], s=42, color="#111111", edgecolor="white", linewidth=0.7, zorder=5)
 
     origin = task["origin"]
     dest = task["destination"]
@@ -92,9 +189,6 @@ def render_task(task: dict[str, Any], out_path: str | Path, show_labels: bool = 
     ax.text(origin["lon"], origin["lat"], "A", color="white", weight="bold", ha="center", va="center", fontsize=10, zorder=8)
     ax.text(dest["lon"], dest["lat"], "B", color="white", weight="bold", ha="center", va="center", fontsize=10, zorder=8)
 
-    ax.set_xlim(west, east)
-    ax.set_ylim(south, north)
-    ax.set_aspect("equal", adjustable="box")
     ax.set_xticks([])
     ax.set_yticks([])
     for spine in ax.spines.values():
@@ -115,6 +209,9 @@ def render_debug_overlay(
     west, south, east, north = task["task_bbox"]
     fig, ax = plt.subplots(figsize=(10, 10), dpi=180)
     ax.set_facecolor("#f8f8f4")
+    ax.set_xlim(west, east)
+    ax.set_ylim(south, north)
+    ax.set_aspect("equal", adjustable="box")
 
     for edge in _graph_edges(task):
         xs, ys = _line_xy(edge["geometry"])
@@ -130,19 +227,7 @@ def render_debug_overlay(
         agent = [lonlat_to_latlon(p) for p in diagnostics["agent_geometry"]]
         ax.plot([p["lon"] for p in agent], [p["lat"] for p in agent], color="#f27a1a", linewidth=3.3, alpha=0.86, zorder=3)
 
-    for label, point in task["turn_checkpoints"].items():
-        ax.scatter(point["lon"], point["lat"], s=36, color="#111111", edgecolor="white", linewidth=0.7, zorder=5)
-        ax.text(
-            point["lon"],
-            point["lat"],
-            label,
-            fontsize=7.5,
-            color="#111111",
-            ha="left",
-            va="bottom",
-            zorder=6,
-            bbox={"boxstyle": "round,pad=0.14", "facecolor": "white", "edgecolor": "#d6d6d6", "alpha": 0.88},
-        )
+    _draw_checkpoint_labels(fig, ax, task["turn_checkpoints"], fontsize=7.8, marker_size=36, label_alpha=0.88)
 
     if prediction:
         turns = prediction.get("prediction", prediction).get("turns", [])
@@ -158,9 +243,6 @@ def render_debug_overlay(
     ax.text(origin["lon"], origin["lat"], "A", color="white", weight="bold", ha="center", va="center", fontsize=10, zorder=8)
     ax.text(dest["lon"], dest["lat"], "B", color="white", weight="bold", ha="center", va="center", fontsize=10, zorder=8)
 
-    ax.set_xlim(west, east)
-    ax.set_ylim(south, north)
-    ax.set_aspect("equal", adjustable="box")
     ax.set_xticks([])
     ax.set_yticks([])
     for spine in ax.spines.values():

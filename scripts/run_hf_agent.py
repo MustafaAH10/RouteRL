@@ -14,11 +14,32 @@ PROMPT = """You are a routing model.
 
 You are given a real driving map image. Roads are drawn with hierarchy styling, one-way arrows show directed streets where known, the blue marker A is the start, and the red marker B is the destination.
 
-Black T-labels mark sparse turn checkpoints and decision points. Infer a plausible short driving route from A to B by choosing only the checkpoints that the driver should pass through. Do not invent labels.
+Black T-labels mark sparse turn checkpoints and decision points. The T numbers are arbitrary labels, not route order. Infer a plausible short driving route from A to B by choosing only the checkpoints that the driver should physically pass through, in driving order. Do not invent labels.
 
 Return JSON only with exactly this shape:
 {"turns":["T1","T2"],"confidence":0.0,"reason":"brief"}
 """
+
+
+def sanitize_prediction(prediction: dict, allowed_labels: set[str]) -> tuple[dict, dict]:
+    turns = prediction.get("turns", []) if isinstance(prediction, dict) else []
+    sanitized_turns = []
+    rejected_turns = []
+    if isinstance(turns, list):
+        for turn in turns:
+            if isinstance(turn, str) and turn in allowed_labels:
+                sanitized_turns.append(turn)
+            else:
+                rejected_turns.append(turn)
+    else:
+        rejected_turns.append(turns)
+    sanitized = dict(prediction) if isinstance(prediction, dict) else {}
+    sanitized["turns"] = sanitized_turns
+    return sanitized, {
+        "rejected_turns": rejected_turns,
+        "num_rejected_turns": len(rejected_turns),
+        "num_sanitized_turns": len(sanitized_turns),
+    }
 
 
 def main() -> None:
@@ -31,6 +52,7 @@ def main() -> None:
     parser.add_argument("--local-files-only", action="store_true")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--max-new-tokens", type=int, default=256)
+    parser.add_argument("--sanitize-labels", action="store_true")
     args = parser.parse_args()
 
     model, processor = load_vision_model(
@@ -46,6 +68,7 @@ def main() -> None:
         tasks = tasks[: args.limit]
     for task in tqdm(tasks, desc=f"hf:{args.model}"):
         image_path = Path(task["images"]["map"])
+        allowed_labels = set(task["turn_checkpoints"])
         prompt = PROMPT + "\nAllowed turn checkpoint labels: " + ", ".join(task["turn_checkpoints"].keys())
         try:
             parsed, raw = generate_route_prediction(
@@ -55,9 +78,21 @@ def main() -> None:
                 processor=processor,
                 max_new_tokens=args.max_new_tokens,
             )
-            records.append({"task_id": task["task_id"], "prediction": parsed, "raw_response": raw})
+            record = {"task_id": task["task_id"], "prediction": parsed, "raw_response": raw}
+            if args.sanitize_labels:
+                sanitized, diagnostics = sanitize_prediction(parsed, allowed_labels)
+                record["raw_prediction"] = parsed
+                record["prediction"] = sanitized
+                record["sanitization"] = diagnostics
+            records.append(record)
         except Exception as exc:
-            records.append({"task_id": task["task_id"], "prediction": {"turns": []}, "error": str(exc)})
+            records.append(
+                {
+                    "task_id": task["task_id"],
+                    "prediction": {"turns": None, "confidence": 0.0, "reason": "inference_error"},
+                    "error": str(exc),
+                }
+            )
     write_jsonl(args.out, records)
     print(f"wrote {len(records)} Hugging Face predictions to {args.out}")
 

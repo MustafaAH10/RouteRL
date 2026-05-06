@@ -54,58 +54,9 @@ natural language query
 
 ## GPU Next Steps
 
-On the GPU instance:
-
-```bash
-bash scripts/setup_gpu_instance.sh
-```
-
-Generate a small Singapore driving set:
-
-```bash
-routerl/bin/python scripts/generate_tasks.py \
-  --bbox 103.845,1.285,103.855,1.295 \
-  --city Singapore \
-  --network-type drive \
-  --n 20 \
-  --min-distance-m 500 \
-  --max-distance-m 2000 \
-  --max-checkpoints 24 \
-  --out data/tasks/singapore_drive_smoke.jsonl
-```
-
-Render images:
-
-```bash
-routerl/bin/python scripts/render_tasks.py \
-  --tasks data/tasks/singapore_drive_smoke.jsonl \
-  --out-dir data/rendered
-```
-
-Run oracle and one VLM pass:
-
-```bash
-routerl/bin/python scripts/make_oracle_predictions.py \
-  --tasks data/tasks/singapore_drive_smoke.jsonl \
-  --out data/predictions/oracle.jsonl
-
-routerl/bin/python scripts/run_hf_agent.py \
-  --tasks data/tasks/singapore_drive_smoke.jsonl \
-  --model Qwen/Qwen3-VL-4B-Instruct \
-  --out data/predictions/qwen3_vl_4b_hf.jsonl \
-  --limit 5 \
-  --device auto \
-  --dtype auto
-```
-
-Evaluate:
-
-```bash
-routerl/bin/python scripts/evaluate_predictions.py \
-  --tasks data/tasks/singapore_drive_smoke.jsonl \
-  --predictions data/predictions/qwen3_vl_4b_hf.jsonl \
-  --out data/results/qwen3_vl_4b_hf.jsonl
-```
+The canonical GPU setup and experiment runbook is now
+`docs/model_io_and_dataflow.md`. Keep command snippets there so operational
+instructions do not drift across multiple docs.
 
 ## Design Notes
 

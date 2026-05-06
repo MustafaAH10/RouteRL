@@ -262,9 +262,7 @@ Example local driving task:
   "origin": {"lat": 1.2868, "lon": 103.8458, "label": "A"},
   "destination": {"lat": 1.2919, "lon": 103.8509, "label": "B"},
   "images": {
-    "canonical": "data/rendered/sg_drive_000001/canonical.png",
-    "start_zoom": "data/rendered/sg_drive_000001/start_zoom.png",
-    "dest_zoom": "data/rendered/sg_drive_000001/dest_zoom.png"
+    "map": "data/experiments/short_500m_2km/maps/sg_drive_000001/map.png"
   },
   "turn_checkpoints": {
     "T1": {"lat": 1.2871, "lon": 103.8460},
@@ -288,10 +286,10 @@ Example route-strip task:
   "city": "Singapore",
   "mode": "drive",
   "images": {
-    "overview": "data/rendered/sg_drive_strip_000001/overview.png",
+    "overview": "data/experiments/route_strip_demo/maps/sg_drive_strip_000001/overview.png",
     "segments": [
-      "data/rendered/sg_drive_strip_000001/segment_1.png",
-      "data/rendered/sg_drive_strip_000001/segment_2.png"
+      "data/experiments/route_strip_demo/maps/sg_drive_strip_000001/segment_1.png",
+      "data/experiments/route_strip_demo/maps/sg_drive_strip_000001/segment_2.png"
     ]
   },
   "segments": [
@@ -322,34 +320,8 @@ Implement before RL:
 
 ## Hugging Face GPU Workflow
 
-Use Hugging Face models on a GPU instance.
-
-Default model:
-
-```text
-Qwen/Qwen3-VL-4B-Instruct
-```
-
-GPU setup:
-
-```bash
-bash scripts/setup_gpu_instance.sh
-```
-
-Run inference:
-
-```bash
-source routerl/bin/activate
-
-python scripts/run_hf_agent.py \
-  --tasks data/tasks/demo.jsonl \
-  --model Qwen/Qwen3-VL-4B-Instruct \
-  --out data/predictions/qwen3_vl_4b_hf.jsonl \
-  --limit 1 \
-  --device auto \
-  --dtype bfloat16 \
-  --max-new-tokens 512
-```
+Use Hugging Face models on a GPU instance. The canonical setup and experiment
+commands live in `docs/model_io_and_dataflow.md`.
 
 ## Streets-GL Role
 
