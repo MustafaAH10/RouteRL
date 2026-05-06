@@ -6,9 +6,8 @@ Image 0 is an overview map. It shows the global A to B context and orange boxes
 for the local segment panels. Each following image is one local segment map.
 
 In each segment image, blue A is the segment start and red B is the segment end.
-Black T-labels are local turn checkpoints for that segment only. T-labels are
-not route order. The same T-label may appear in different segments and must not
-be shared across segments.
+Black T-labels are turn checkpoints. T-label numbers are unique across the whole
+route strip, but they are not route order.
 
 Choose only the checkpoints a driver should physically pass through, in driving
 order, for each segment. Do not invent labels. Use only labels listed for that
@@ -17,5 +16,10 @@ segment.
 Most visible labels are distractors. Do not list every label in a segment unless
 the route really passes through every one.
 
+Prefer a short sparse route over a long exhaustive list. If your answer copies
+all or nearly all allowed labels from a segment, it is almost certainly wrong.
+For each segment, skip side-road labels, nearby parallel-road labels, and labels
+that are visible but not on the A-to-B driving path.
+
 Return JSON only with exactly this shape:
-{"segments":[{"segment_id":"S01","turns":["T01","T02"]}]}
+{"segments":[{"segment_id":"S01","turns":["T001","T002"]}]}

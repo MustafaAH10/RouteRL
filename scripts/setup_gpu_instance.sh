@@ -48,13 +48,14 @@ fi
 
 echo "Verifying GPU visibility"
 python - <<'PY'
+import os
 import torch
 print("torch:", torch.__version__)
 print("cuda_available:", torch.cuda.is_available())
 if torch.cuda.is_available():
     print("cuda_device_count:", torch.cuda.device_count())
     print("cuda_device_0:", torch.cuda.get_device_name(0))
-expected = int("${EXPECTED_GPU_COUNT}")
+expected = int(os.environ.get("EXPECTED_GPU_COUNT", "0"))
 if expected and torch.cuda.device_count() < expected:
     raise SystemExit(f"expected at least {expected} CUDA devices, found {torch.cuda.device_count()}")
 PY
@@ -79,20 +80,21 @@ Setup complete.
 Run a one-task prediction:
 
   source ${VENV_DIR}/bin/activate
+  EXP=data/experiments/long_8_25km_route_strip_probe
   python scripts/run_hf_agent.py \\
-    --tasks data/experiments/demo/tasks.jsonl \\
+    --tasks "\${EXP}/tasks.jsonl" \\
     --model ${HF_MODEL} \\
-    --out data/experiments/demo/predictions/hf_predictions.jsonl \\
+    --out "\${EXP}/predictions/hf_predictions.jsonl" \\
     --limit 1 \\
     --device auto \\
     --dtype bfloat16 \\
-    --max-new-tokens 512 \\
+    --max-new-tokens 1536 \\
     --sanitize-labels
 
 Evaluate:
 
   python scripts/evaluate_predictions.py \\
-    --tasks data/experiments/demo/tasks.jsonl \\
-    --predictions data/experiments/demo/predictions/hf_predictions.jsonl \\
-    --out data/experiments/demo/results/hf_predictions.jsonl
+    --tasks "\${EXP}/tasks.jsonl" \\
+    --predictions "\${EXP}/predictions/hf_predictions.jsonl" \\
+    --out "\${EXP}/results/hf_predictions.jsonl"
 EOF

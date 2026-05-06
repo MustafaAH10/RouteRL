@@ -42,13 +42,13 @@ natural language query
   local segment panels for long routes.
 - The Hugging Face runner can send multi-image route-strip prompts, and the
   verifier can dispatch route-strip predictions through per-segment rewards.
-- Reproducible GPU scaffolding exists for H100 smoke checks, model prefetching,
-  and VeRL-style dataset/reward adapters.
+- Reproducible GPU setup exists for fresh-instance install, H100 smoke checks,
+  model prefetching, and RouteRL dataset/reward adapters.
 
 ## What Is Not Built Yet
 
 - Production-scale route-strip training runs on 8xH100.
-- A pinned dependency lockfile or published immutable Docker image.
+- A pinned dependency lockfile.
 - Full VeRL trainer wiring against a pinned upstream VeRL release.
 - Turn restriction handling beyond directed one-way graph constraints.
 - Geocoding from natural-language locations such as `City Hall MRT` and

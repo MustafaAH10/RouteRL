@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 
+from route_env.strip_tasks import make_route_strip_task
 from route_env.verify import verify_prediction
 
 
@@ -121,6 +122,23 @@ class VerifyPredictionTest(unittest.TestCase):
         self.assertTrue(result["valid_schema"])
         self.assertTrue(result["valid_route"])
         self.assertAlmostEqual(result["score"], 1.0)
+
+    def test_generated_route_strip_labels_are_unique_across_segments(self) -> None:
+        task = make_linear_task(num_turns=10)
+        strip = make_route_strip_task(
+            task,
+            target_segment_distance_m=300,
+            max_segment_checkpoints=4,
+            segment_margin_m=100,
+            seed=3,
+        )
+        labels = [
+            label
+            for segment in strip["segments"]
+            for label in segment["turn_checkpoints"]
+        ]
+        self.assertEqual(len(labels), len(set(labels)))
+        self.assertTrue(all(label.startswith("T") and len(label) == 4 for label in labels))
 
 
 if __name__ == "__main__":

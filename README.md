@@ -67,12 +67,12 @@ afterward to create the model-facing map PNGs and update each task's image path.
 ## Documentation
 
 - [Start here: concepts, baselines, and workflow](docs/start_here.md)
-- [GPU setup, dataflow, and experiment commands](docs/model_io_and_dataflow.md)
+- [GPU setup, model I/O, and test flow](docs/model_io_and_dataflow.md)
 - [Current progress and goals](docs/progress_and_goals.md)
 - [Task design notes](docs/task_design.md)
 - [Experiment report](docs/model_test_report.md)
 - [Drive MVP spec](routesight_rl_mvp_spec.md)
-- [Reproducible GPU instance flow](docs/reproducible_gpu_infra.md)
+- [Fresh GPU instance setup](docs/reproducible_gpu_infra.md)
 - [VeRL integration notes](docs/verl_integration.md)
 
 ## Project Direction

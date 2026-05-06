@@ -50,7 +50,7 @@ from route_env.reward import RouteRewarder
 rewarder = RouteRewarder("data/experiments/long_8_25km_route_strip_probe/tasks.jsonl")
 result = rewarder.score_response(
     "singapore_drive_000001_strip",
-    '{"segments":[{"segment_id":"S01","turns":["T01"]}]}',
+    '{"segments":[{"segment_id":"S01","turns":["T001"]}]}',
 )
 print(result.reward)
 print(result.metrics["valid_route"])
@@ -82,8 +82,8 @@ num_predicted_turns
 
 ## What Is Still Not Automatic
 
-The repo does not yet vendor or pin VeRL. Clone/install it into the GPU image or
-use an existing VeRL image, then wire its trainer entrypoint to:
+The repo does not yet vendor or pin VeRL. Clone/install it into the active GPU
+Python environment, then wire its trainer entrypoint to:
 
 - the dataset emitted by `scripts/prepare_verl_dataset.py`;
 - the model named in `configs/verl/routerl_qwen_vl_smoke.yaml`;

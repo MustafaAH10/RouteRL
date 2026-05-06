@@ -11,7 +11,7 @@ then
   cat >&2 <<'EOF'
 The `verl` package is not installed in this environment.
 
-Install or run from a pinned VeRL image first, for example:
+Install or run from a pinned VeRL checkout first, for example:
   git clone https://github.com/verl-project/verl external/verl
   python -m pip install -e external/verl
 

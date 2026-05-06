@@ -204,9 +204,9 @@ The model outputs per-segment turns:
 ```json
 {
   "segments": [
-    {"segment_id": "S1", "turns": ["T2", "T5"]},
-    {"segment_id": "S2", "turns": ["T1", "T4", "T8"]},
-    {"segment_id": "S3", "turns": ["T3"]}
+    {"segment_id": "S01", "turns": ["T002", "T005"]},
+    {"segment_id": "S02", "turns": ["T033", "T040", "T048"]},
+    {"segment_id": "S03", "turns": ["T071"]}
   ]
 }
 ```
@@ -295,8 +295,8 @@ Example route-strip task:
   "oracle": {
     "distance_m": 9300.0,
     "segment_gold_routes": {
-      "S01": ["T02", "T05"],
-      "S02": ["T01", "T08"]
+      "S01": ["T002", "T005"],
+      "S02": ["T033", "T040"]
     }
   }
 }

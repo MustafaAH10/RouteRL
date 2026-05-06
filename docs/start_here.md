@@ -27,8 +27,11 @@ For a flat task the model returns:
 For a route-strip task the model returns:
 
 ```json
-{"segments":[{"segment_id":"S01","turns":["T03","T11"]}]}
+{"segments":[{"segment_id":"S01","turns":["T001","T011"]}]}
 ```
+
+Route-strip checkpoint labels are unique across the whole strip, but the answer
+is still grouped by segment.
 
 No extra score or explanation is required.
 
@@ -63,7 +66,7 @@ python scripts/make_route_strip_tasks.py \
   --target-segment-distance-m 2500 \
   --max-segment-checkpoints 32 \
   --segment-margin-m 260 \
-  --limit 3
+  --limit 4
 
 python scripts/render_route_strip_tasks.py \
   --tasks "$EXP/tasks.jsonl" \

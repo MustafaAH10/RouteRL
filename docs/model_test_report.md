@@ -44,7 +44,7 @@ For a route-strip task, the model sees one overview image plus one local image
 per segment and must return:
 
 ```json
-{"segments":[{"segment_id":"S01","turns":["T03","T11"]}]}
+{"segments":[{"segment_id":"S01","turns":["T001","T011"]}]}
 ```
 
 The prompts ask for route labels only. Extra keys in legacy prediction files are
@@ -72,7 +72,7 @@ beat greedy needs prompt/image work.
 | `medium_2_6km` | 5 | 2654m-5435m | 15-40 | 40 | oracle, greedy |
 | `long_8_25km_80cp_probe` | 10 | 8622m-23515m | capped at 80 | 80 | oracle, greedy |
 | `long_8_25km_200cp_probe` | 2 | 21593m-23276m | 98-136 | 200 | oracle |
-| `long_8_25km_route_strip_probe` | 3 | 13271m-17428m | 5-7 segments | <=32 per segment | oracle, greedy, Qwen 8B limit 1 |
+| `long_8_25km_route_strip_probe` | 4 | 13271m-23140m | 5-8 segments | <=32 per segment | oracle, greedy, Qwen 8B limit 1 |
 
 ## Short 500m-2km
 
@@ -141,15 +141,16 @@ clutter problem. Long driving needs local panels.
 
 ## Route-Strip Long-Route Probe
 
-The route-strip probe converts the first three long tasks into one overview plus
-several local segment images. Segment labels are local, so `T01` in `S01` is
-different from `T01` in `S02`.
+The route-strip probe converts long tasks into one overview plus several local
+segment images. Segment labels are globally unique across the whole strip, so
+the model does not have to disambiguate reused `T01` labels between segments.
 
 ```text
 data/experiments/long_8_25km_route_strip_probe/
 task 1: distance=13270m, segments=5, segment distance=2520m-2806m, max segment turns=24
 task 2: distance=13887m, segments=5, segment distance=2534m-3040m, max segment turns=25
 task 3: distance=17428m, segments=7, segment distance=1603m-3082m, max segment turns=26
+task 4: distance=23140m, segments=8, segment distance=2510m-3327m, max segment turns=27
 checkpoints: <=32 per segment
 ```
 
@@ -169,8 +170,8 @@ Route-strip scoring:
 
 | Predictor | Mean score | Success | Valid schema | Valid route |
 |---|---:|---:|---:|---:|
-| Oracle | 1.000 | 3/3 | 3/3 | 3/3 |
-| Greedy | 0.572 | 0/3 | 3/3 | 2/3 |
+| Oracle | 1.000 | 4/4 | 4/4 | 4/4 |
+| Greedy | 0.487 | 0/4 | 4/4 | 2/4 |
 | Qwen3-VL-8B strip, limit 1 | 0.068 | 0/1 | 1/1 | 0/1 |
 
 The first Qwen route-strip sample is useful because it exposes a clean failure
@@ -179,7 +180,7 @@ mode:
 ```text
 file: data/experiments/long_8_25km_route_strip_probe/predictions/qwen3_vl_8b_strip_limit1.jsonl
 result: score=0.068, valid_schema=true, valid_route=false
-behavior: selected every visible checkpoint T01-T32 for every segment
+behavior: selected every visible checkpoint in every segment
 gold turns for task 1: 74 total across segments
 predicted turns for task 1: 160 total across segments
 ```
@@ -231,7 +232,7 @@ python scripts/make_route_strip_tasks.py \
   --target-segment-distance-m 2500 \
   --max-segment-checkpoints 32 \
   --segment-margin-m 260 \
-  --limit 3
+  --limit 4
 
 python scripts/render_route_strip_tasks.py \
   --tasks "$EXP/tasks.jsonl" \

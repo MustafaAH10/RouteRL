@@ -30,10 +30,10 @@ def _draw_direction_arrow(ax: Any, geometry: list[list[float]], color: str = "#2
             (start[0], start[1]),
             (end[0], end[1]),
             arrowstyle="-|>",
-            mutation_scale=8,
-            linewidth=0.0,
+            mutation_scale=13,
+            linewidth=0.55,
             color=color,
-            alpha=alpha,
+            alpha=min(1.0, alpha + 0.12),
             zorder=3,
         )
     )
@@ -74,30 +74,25 @@ def _overlap_area(a: tuple[float, float, float, float], b: tuple[float, float, f
 
 
 def _label_candidates() -> list[tuple[int, int]]:
-    return [
-        (0, 14),
-        (18, 8),
-        (-18, 8),
-        (18, -8),
-        (-18, -8),
-        (0, -16),
-        (28, 0),
-        (-28, 0),
-        (32, 16),
-        (-32, 16),
-        (32, -16),
-        (-32, -16),
-        (0, 30),
-        (0, -32),
-        (44, 0),
-        (-44, 0),
-        (0, 46),
-        (0, -48),
-        (54, 22),
-        (-54, 22),
-        (54, -22),
-        (-54, -22),
-    ]
+    candidates: list[tuple[int, int]] = []
+    for radius in (18, 32, 48, 68, 92, 120, 150):
+        candidates.extend(
+            [
+                (0, radius),
+                (radius, 0),
+                (0, -radius),
+                (-radius, 0),
+                (radius, radius // 2),
+                (-radius, radius // 2),
+                (radius, -(radius // 2)),
+                (-radius, -(radius // 2)),
+                (radius // 2, radius),
+                (-(radius // 2), radius),
+                (radius // 2, -radius),
+                (-(radius // 2), -radius),
+            ]
+        )
+    return candidates
 
 
 def _draw_checkpoint_labels(
@@ -117,6 +112,9 @@ def _draw_checkpoint_labels(
     for point in occupied_points or []:
         px, py = ax.transData.transform((point["lon"], point["lat"]))
         placed.append((px - 34, py - 34, px + 34, py + 34))
+    for point in checkpoints.values():
+        px, py = ax.transData.transform((point["lon"], point["lat"]))
+        placed.append((px - 9, py - 9, px + 9, py + 9))
     candidates = _label_candidates()
 
     for label, point in sorted(checkpoints.items(), key=lambda item: _label_number(item[0])):
@@ -124,8 +122,8 @@ def _draw_checkpoint_labels(
         px, py = ax.transData.transform((point["lon"], point["lat"]))
         # Conservative text box estimate in display pixels. The actual bbox is
         # drawn by matplotlib, this is only for collision avoidance.
-        width = max(24.0, 9.0 * len(label) + 12.0)
-        height = 21.0
+        width = max(38.0, 9.5 * len(label) + 22.0)
+        height = 27.0
 
         best_offset = candidates[0]
         best_box: tuple[float, float, float, float] | None = None
@@ -144,7 +142,7 @@ def _draw_checkpoint_labels(
                 + max(0.0, box[3] - axes_box.y1)
             )
             distance_cost = (dx_pt * dx_pt + dy_pt * dy_pt) ** 0.5
-            cost = overlap * 10.0 + outside * 30.0 + distance_cost
+            cost = overlap * 150.0 + outside * 60.0 + distance_cost
             if cost < best_cost:
                 best_cost = cost
                 best_offset = (dx_pt, dy_pt)
@@ -245,8 +243,8 @@ def render_task(
             fig,
             ax,
             task["turn_checkpoints"],
-            fontsize=8.5,
-            marker_size=42,
+            fontsize=7.8,
+            marker_size=38,
             label_alpha=0.92,
             occupied_points=[origin, dest],
         )

@@ -70,6 +70,42 @@ select {
   padding: 10px 11px;
 }
 
+.task-nav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-nav button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfbf8;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+
+.task-nav button:hover:not(:disabled) {
+  border-color: #aeb7c4;
+  background: #ffffff;
+}
+
+.task-nav button:disabled {
+  color: #a7afbd;
+  cursor: default;
+}
+
+#taskCounter {
+  min-width: 72px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .toggles {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -173,6 +209,13 @@ select {
   background: #f8f8f4;
   border: 1px solid var(--line);
   border-radius: 8px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+#map:active {
+  cursor: grabbing;
 }
 
 .road {
@@ -180,6 +223,14 @@ select {
   stroke: var(--road);
   stroke-linecap: round;
   opacity: 0.58;
+}
+
+.road-arrow {
+  fill: #344357;
+  opacity: 0.74;
+  stroke: #ffffff;
+  stroke-width: 0.8;
+  paint-order: stroke;
 }
 
 .route-oracle {

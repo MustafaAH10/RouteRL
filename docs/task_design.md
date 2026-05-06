@@ -85,7 +85,8 @@ Panel 3: segment 3 local driving map
 ...
 ```
 
-Each segment panel has its own local markers:
+Each segment panel has its own A/B markers. `T` checkpoint labels are unique
+across the whole strip so the same label is not reused in multiple segments:
 
 ```text
 S1_A -> S1_B
@@ -98,9 +99,9 @@ Output:
 ```json
 {
   "segments": [
-    {"segment_id": "S1", "turns": ["T2", "T5"]},
-    {"segment_id": "S2", "turns": ["T1", "T4", "T8"]},
-    {"segment_id": "S3", "turns": ["T3"]}
+    {"segment_id": "S01", "turns": ["T002", "T005"]},
+    {"segment_id": "S02", "turns": ["T033", "T040", "T048"]},
+    {"segment_id": "S03", "turns": ["T071"]}
   ]
 }
 ```

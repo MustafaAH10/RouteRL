@@ -19,6 +19,12 @@
           <select id="taskSelect"></select>
         </label>
 
+        <div class="task-nav" aria-label="Task navigation">
+          <button type="button" id="prevTask">Previous</button>
+          <span id="taskCounter">Task 0 / 0</span>
+          <button type="button" id="nextTask">Next</button>
+        </div>
+
         <label class="field" id="panelField" hidden>
           <span>Panel</span>
           <select id="panelSelect"></select>
@@ -26,6 +32,7 @@
 
         <div class="toggles">
           <label><input type="checkbox" id="graphToggle" checked /> Graph</label>
+          <label><input type="checkbox" id="arrowsToggle" checked /> Arrows</label>
           <label><input type="checkbox" id="oracleToggle" checked /> Oracle</label>
           <label><input type="checkbox" id="agentToggle" checked /> Agent</label>
           <label><input type="checkbox" id="checkpointsToggle" checked /> Checkpoints</label>
@@ -46,6 +53,6 @@
       </section>
     </main>
 
-    <script type="module" src="route_overlay.js?v=2"></script>
+    <script type="module" src="route_overlay.js?v=5"></script>
   </body>
 </html>

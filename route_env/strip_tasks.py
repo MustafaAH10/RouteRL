@@ -130,14 +130,15 @@ def _build_segment_task(
     max_checkpoints: int,
     margin_m: float,
     rng: random.Random,
-) -> dict[str, Any]:
+    label_start: int,
+) -> tuple[dict[str, Any], int]:
     oracle_points = geometry_for_osm_path(graph, route)
     task_bbox = bbox_from_points(oracle_points, margin_m=margin_m)
     crop_nodes = _nodes_in_bbox(graph, task_bbox)
     checkpoint_nodes, important_nodes = _select_segment_checkpoints(graph, route, crop_nodes, max_checkpoints, rng)
     label_order = checkpoint_nodes[:]
     rng.shuffle(label_order)
-    labels = {node: f"T{i + 1:02d}" for i, node in enumerate(label_order)}
+    labels = {node: f"T{label_start + i:03d}" for i, node in enumerate(label_order)}
     checkpoints = {
         labels[node]: {
             "lat": _node_point(graph, node)["lat"],
@@ -156,7 +157,7 @@ def _build_segment_task(
         for node in crop_nodes
     }
 
-    return {
+    segment_task = {
         "task_id": f"{parent['task_id']}_{segment_id.lower()}",
         "segment_id": segment_id,
         "city": parent["city"],
@@ -182,9 +183,10 @@ def _build_segment_task(
         },
         "prompt": (
             f"Segment {segment_id}: trace a valid driving route from blue A to red B "
-            "using sparse local turn checkpoints."
+            "using sparse turn checkpoints."
         ),
     }
+    return segment_task, label_start + len(label_order)
 
 
 def make_route_strip_task(
@@ -199,8 +201,10 @@ def make_route_strip_task(
     route = [str(int(node)) for node in parent["oracle"]["gold_osm_route"]]
     route_segments = split_route_by_distance(graph, route, target_segment_distance_m)
     rng = random.Random(seed)
-    segments = [
-        _build_segment_task(
+    segments = []
+    next_label = 1
+    for i, segment_route in enumerate(route_segments):
+        segment, next_label = _build_segment_task(
             parent,
             graph,
             f"S{i + 1:02d}",
@@ -208,9 +212,9 @@ def make_route_strip_task(
             max_checkpoints=max_segment_checkpoints,
             margin_m=segment_margin_m,
             rng=rng,
+            label_start=next_label,
         )
-        for i, segment_route in enumerate(route_segments)
-    ]
+        segments.append(segment)
 
     return {
         "task_id": f"{parent['task_id']}_strip",
