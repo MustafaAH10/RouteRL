@@ -1,0 +1,14 @@
+routerl/
+cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+data/rendered/
+data/predictions/
+data/results/
+data/debug/
+*.egg-info/
+node_modules/
+playwright-report/

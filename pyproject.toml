@@ -1,0 +1,29 @@
+[project]
+name = "routerl"
+version = "0.1.0"
+description = "Real-map visual routing tasks for model-native route learning."
+requires-python = ">=3.10"
+dependencies = [
+  "matplotlib",
+  "networkx",
+  "numpy",
+  "osmnx",
+  "pillow",
+  "pydantic",
+  "requests",
+  "tqdm",
+]
+
+[project.optional-dependencies]
+hf = [
+  "accelerate",
+  "huggingface_hub",
+  "qwen-vl-utils",
+  "safetensors",
+  "torch",
+  "torchvision",
+  "transformers",
+]
+
+[tool.setuptools.packages.find]
+include = ["route_env*"]

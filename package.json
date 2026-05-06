@@ -1,0 +1,12 @@
+{
+  "name": "routerl-renderer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture:streets-gl": "node renderer/streets_gl_capture.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.57.0"
+  }
+}
+
