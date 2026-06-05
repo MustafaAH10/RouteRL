@@ -3,6 +3,15 @@ set -euo pipefail
 
 EXPECTED_GPUS="${EXPECTED_GPUS:-8}"
 TASKS="${TASKS:-data/experiments/long_8_25km_route_strip_probe/tasks.jsonl}"
+PYTHON_BIN="${PYTHON_BIN:-}"
+
+if [[ -z "${PYTHON_BIN}" ]]; then
+  if [[ -x "routerl/bin/python" ]]; then
+    PYTHON_BIN="routerl/bin/python"
+  else
+    PYTHON_BIN="python"
+  fi
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -21,7 +30,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-python - <<PY
+"${PYTHON_BIN}" - <<PY
 import json
 import subprocess
 import sys
@@ -42,16 +51,18 @@ if torch.cuda.device_count() < expected:
     raise SystemExit(f"expected at least {expected} GPUs, found {torch.cuda.device_count()}")
 PY
 
-python -m unittest discover -s tests
+"${PYTHON_BIN}" -m unittest discover -s tests
 
 if [[ -f "${TASKS}" ]]; then
   TMP_DIR="$(mktemp -d)"
-  python scripts/make_oracle_predictions.py --tasks "${TASKS}" --out "${TMP_DIR}/oracle.jsonl"
-  python scripts/evaluate_predictions.py --tasks "${TASKS}" --predictions "${TMP_DIR}/oracle.jsonl" --out "${TMP_DIR}/results.jsonl"
+  trap 'rm -rf "${TMP_DIR}"' EXIT
+  "${PYTHON_BIN}" scripts/make_oracle_predictions.py --tasks "${TASKS}" --out "${TMP_DIR}/oracle.jsonl"
+  "${PYTHON_BIN}" scripts/evaluate_predictions.py --tasks "${TASKS}" --predictions "${TMP_DIR}/oracle.jsonl" --out "${TMP_DIR}/results.jsonl"
   rm -rf "${TMP_DIR}"
+  trap - EXIT
 else
   echo "skipping oracle smoke: ${TASKS} not found"
 fi
 
-python -m pip check
+"${PYTHON_BIN}" -m pip check
 echo "RouteRL H100 smoke check passed"

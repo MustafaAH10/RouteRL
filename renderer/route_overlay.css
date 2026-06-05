@@ -15,6 +15,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -43,6 +47,12 @@ h1 {
   font-size: 23px;
   line-height: 1.1;
   letter-spacing: 0;
+}
+
+h2 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.1;
 }
 
 p {
@@ -121,6 +131,80 @@ select {
   padding: 9px;
   background: #fbfbf8;
   font-size: 13px;
+}
+
+.trace-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfbf8;
+  padding: 12px;
+}
+
+.trace-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+#traceStepCounter {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.trace-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.trace-nav button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.trace-nav button:hover:not(:disabled) {
+  border-color: #aeb7c4;
+}
+
+.trace-nav button:disabled {
+  color: #a7afbd;
+  cursor: default;
+}
+
+#traceStepRange {
+  width: 100%;
+}
+
+.trace-action {
+  min-height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 9px;
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+#traceImage {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f8f8f4;
 }
 
 .metrics {
@@ -255,6 +339,21 @@ select {
   font-size: 11px;
   font-weight: 650;
   fill: #111;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3px;
+}
+
+.marked-checkpoint {
+  fill: rgba(242, 122, 26, 0.16);
+  stroke: #f27a1a;
+  stroke-width: 3;
+}
+
+.marked-index {
+  font-size: 10px;
+  font-weight: 800;
+  fill: #8f3f0d;
   paint-order: stroke;
   stroke: #fff;
   stroke-width: 3px;

@@ -16,6 +16,14 @@ def read_jsonl(path: str | Path) -> list[dict[str, Any]]:
     return records
 
 
+def iter_jsonl(path: str | Path) -> Iterable[dict[str, Any]]:
+    with Path(path).open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                yield json.loads(line)
+
+
 def _json_safe(value: Any) -> Any:
     if isinstance(value, float):
         return value if math.isfinite(value) else None

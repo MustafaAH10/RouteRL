@@ -83,6 +83,7 @@ def generate_route_prediction(
     processor: Any,
     max_new_tokens: int = 256,
     image_captions: Sequence[str] | None = None,
+    system_prompt: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     image_paths = list(image_path) if isinstance(image_path, Sequence) and not isinstance(image_path, str | Path) else [image_path]
     images = [Image.open(path).convert("RGB") for path in image_paths]
@@ -93,12 +94,15 @@ def generate_route_prediction(
             content.append({"type": "text", "text": captions[index]})
         content.append({"type": "image", "image": image})
     content.append({"type": "text", "text": prompt})
-    messages = [
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": [{"type": "text", "text": system_prompt}]})
+    messages.append(
         {
             "role": "user",
             "content": content,
         }
-    ]
+    )
     inputs = processor.apply_chat_template(
         messages,
         tokenize=True,

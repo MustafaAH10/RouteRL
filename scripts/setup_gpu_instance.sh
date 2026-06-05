@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # Optional overrides:
 #   PYTHON_BIN=python3.11 bash scripts/setup_gpu_instance.sh
-#   TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124 bash scripts/setup_gpu_instance.sh
+#   TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130 bash scripts/setup_gpu_instance.sh
 #   HF_MODEL=Qwen/Qwen3-VL-4B-Instruct bash scripts/setup_gpu_instance.sh
 #   HF_MODEL_REVISION=<commit-or-tag> bash scripts/setup_gpu_instance.sh
 #   EXPECTED_GPU_COUNT=8 bash scripts/setup_gpu_instance.sh
@@ -17,7 +17,7 @@ VENV_DIR="${VENV_DIR:-routerl}"
 HF_MODEL="${HF_MODEL:-Qwen/Qwen3-VL-4B-Instruct}"
 HF_MODEL_REVISION="${HF_MODEL_REVISION:-}"
 HF_CACHE_DIR="${HF_CACHE_DIR:-${HF_HOME:-}}"
-TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu124}"
+TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
 INSTALL_FLASH_ATTN="${INSTALL_FLASH_ATTN:-0}"
 EXPECTED_GPU_COUNT="${EXPECTED_GPU_COUNT:-0}"
 

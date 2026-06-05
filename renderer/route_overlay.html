@@ -30,6 +30,30 @@
           <select id="panelSelect"></select>
         </label>
 
+        <section class="trace-panel" id="tracePanel" hidden>
+          <div class="trace-heading">
+            <h2>CUA Trace</h2>
+            <span id="traceStepCounter">0 / 0</span>
+          </div>
+
+          <label class="field">
+            <span>Rollout</span>
+            <select id="traceSelect"></select>
+          </label>
+
+          <div class="trace-nav" aria-label="Trace navigation">
+            <button type="button" id="prevTraceStep">Prev</button>
+            <button type="button" id="playTrace">Play</button>
+            <button type="button" id="nextTraceStep">Next</button>
+          </div>
+
+          <input type="range" id="traceStepRange" min="0" max="0" value="0" />
+
+          <div class="trace-action" id="traceAction">No trace loaded.</div>
+
+          <img id="traceImage" alt="Current CUA observation panel" />
+        </section>
+
         <div class="toggles">
           <label><input type="checkbox" id="graphToggle" checked /> Graph</label>
           <label><input type="checkbox" id="arrowsToggle" checked /> Arrows</label>
@@ -53,6 +77,6 @@
       </section>
     </main>
 
-    <script type="module" src="route_overlay.js?v=5"></script>
+    <script type="module" src="route_overlay.js?v=8"></script>
   </body>
 </html>

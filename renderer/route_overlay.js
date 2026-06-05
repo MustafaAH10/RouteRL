@@ -10,6 +10,8 @@ function repoUrl(value, fallback = "") {
 const taskUrl = repoUrl(params.get("tasks"), "data/experiments/long_8_25km_route_strip_probe/tasks.jsonl");
 const predictionUrl = repoUrl(params.get("predictions"));
 const resultUrl = repoUrl(params.get("results"));
+const traceUrl = repoUrl(params.get("trace"));
+const tracePoll = params.get("poll") === "1";
 
 const svg = document.querySelector("#map");
 const taskSelect = document.querySelector("#taskSelect");
@@ -18,6 +20,15 @@ const nextTaskButton = document.querySelector("#nextTask");
 const taskCounter = document.querySelector("#taskCounter");
 const panelSelect = document.querySelector("#panelSelect");
 const panelField = document.querySelector("#panelField");
+const tracePanel = document.querySelector("#tracePanel");
+const traceSelect = document.querySelector("#traceSelect");
+const traceStepCounter = document.querySelector("#traceStepCounter");
+const prevTraceStepButton = document.querySelector("#prevTraceStep");
+const nextTraceStepButton = document.querySelector("#nextTraceStep");
+const playTraceButton = document.querySelector("#playTrace");
+const traceStepRange = document.querySelector("#traceStepRange");
+const traceAction = document.querySelector("#traceAction");
+const traceImage = document.querySelector("#traceImage");
 const subtitle = document.querySelector("#subtitle");
 const metrics = document.querySelector("#metrics");
 const toggles = {
@@ -32,6 +43,12 @@ const state = {
   tasks: [],
   predictions: new Map(),
   results: new Map(),
+  traces: [],
+  traceIndex: 0,
+  traceStepIndex: 0,
+  traceTimer: null,
+  traceRefreshBusy: false,
+  traceControlsReady: false,
   view: {
     x: 0,
     y: 0,
@@ -120,6 +137,84 @@ function selectedPanel(task) {
   const value = panelSelect.value || "overview";
   if (value === "overview") return task;
   return task.segments.find((segment) => segment.segment_id === value) || task;
+}
+
+function selectedTrace() {
+  if (!state.traces.length) return null;
+  return state.traces[Math.max(0, Math.min(state.traces.length - 1, state.traceIndex))];
+}
+
+function selectedTraceResult(task) {
+  const trace = selectedTrace();
+  if (!trace || (trace.task_id !== task.task_id && trace.task_id !== task.source_task_id)) return null;
+  return trace.metrics || null;
+}
+
+function activeTraceStep() {
+  const trace = selectedTrace();
+  if (!trace?.trace?.length) return null;
+  return trace.trace[Math.max(0, Math.min(trace.trace.length - 1, state.traceStepIndex))];
+}
+
+function traceTaskIndex(trace) {
+  if (!trace) return -1;
+  return state.tasks.findIndex((task) => task.task_id === trace.task_id || task.source_task_id === trace.task_id);
+}
+
+function actionLabel(action) {
+  if (!action) return "No action";
+  const tool = action.tool || action.action || "<missing>";
+  const parts = [tool];
+  if (action.segment_id) parts.push(`segment=${action.segment_id}`);
+  if (action.turn) parts.push(`turn=${action.turn}`);
+  if (action.label) parts.push(`label=${action.label}`);
+  if (action.candidate_id) parts.push(`candidate=${action.candidate_id}`);
+  if (action.choice) parts.push(`choice=${action.choice}`);
+  return parts.join(" · ");
+}
+
+function stopTracePlayback() {
+  if (state.traceTimer) window.clearInterval(state.traceTimer);
+  state.traceTimer = null;
+  if (playTraceButton) playTraceButton.textContent = "Play";
+}
+
+function syncPanelToTraceStep() {
+  const step = activeTraceStep();
+  const observation = step?.observation;
+  if (!observation) return;
+  const taskIndex = traceTaskIndex(selectedTrace());
+  if (taskIndex >= 0 && taskSelect.value !== String(taskIndex)) {
+    taskSelect.value = String(taskIndex);
+    setupPanelSelector();
+  }
+  const view = observation.view || {};
+  if (view.kind === "overview" && panelSelect.value !== "overview") {
+    panelSelect.value = "overview";
+  } else if (view.segment_id && panelSelect.value !== view.segment_id) {
+    panelSelect.value = view.segment_id;
+  }
+}
+
+function setTraceStep(index) {
+  const trace = selectedTrace();
+  if (!trace?.trace?.length) return;
+  state.traceStepIndex = Math.max(0, Math.min(trace.trace.length - 1, index));
+  syncPanelToTraceStep();
+  updateUrlSelection();
+  draw();
+}
+
+function setTraceIndex(index) {
+  if (!state.traces.length) return;
+  stopTracePlayback();
+  state.traceIndex = Math.max(0, Math.min(state.traces.length - 1, index));
+  state.traceStepIndex = 0;
+  if (traceSelect) traceSelect.value = String(state.traceIndex);
+  syncPanelToTraceStep();
+  resetView();
+  updateUrlSelection();
+  draw();
 }
 
 function resetView() {
@@ -213,6 +308,7 @@ function setupSelectors() {
   });
   for (const toggle of Object.values(toggles)) toggle.addEventListener("change", draw);
   setupPanelSelector({ useQueryPanel: true });
+  setupTraceControls();
 }
 
 function setupPanelSelector({ useQueryPanel = false } = {}) {
@@ -236,6 +332,98 @@ function setupPanelSelector({ useQueryPanel = false } = {}) {
   const requestedPanel = useQueryPanel ? params.get("panel") : null;
   if (requestedPanel && [...panelSelect.options].some((option) => option.value === requestedPanel)) {
     panelSelect.value = requestedPanel;
+  }
+}
+
+function traceLabel(trace, index) {
+  const score = trace.metrics?.score;
+  const suffix = Number.isFinite(score) ? ` · score ${Number(score).toFixed(3)}` : "";
+  return `${index + 1}. ${trace.mode || "trace"} · ${trace.task_id}${suffix}`;
+}
+
+function renderTraceOptions() {
+  traceSelect.replaceChildren(
+    ...state.traces.map((trace, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = traceLabel(trace, index);
+      return option;
+    }),
+  );
+  traceSelect.value = String(Math.max(0, Math.min(state.traces.length - 1, state.traceIndex)));
+}
+
+function setupTraceControls() {
+  if (!tracePanel) return;
+  if (!state.traces.length) {
+    tracePanel.hidden = true;
+    return;
+  }
+  tracePanel.hidden = false;
+  renderTraceOptions();
+  const requestedMode = params.get("mode");
+  const requestedTrace = params.get("traceIndex");
+  let initial = Number.isInteger(Number(requestedTrace)) ? Number(requestedTrace) : 0;
+  if (requestedMode) {
+    const byMode = state.traces.findIndex((trace) => trace.mode === requestedMode);
+    if (byMode >= 0) initial = byMode;
+  }
+  if (!state.traceControlsReady) {
+    state.traceControlsReady = true;
+    traceSelect.addEventListener("change", () => setTraceIndex(Number(traceSelect.value)));
+    prevTraceStepButton.addEventListener("click", () => setTraceStep(state.traceStepIndex - 1));
+    nextTraceStepButton.addEventListener("click", () => setTraceStep(state.traceStepIndex + 1));
+    traceStepRange.addEventListener("input", () => setTraceStep(Number(traceStepRange.value)));
+    playTraceButton.addEventListener("click", () => {
+      if (state.traceTimer) {
+        stopTracePlayback();
+        return;
+      }
+      playTraceButton.textContent = "Pause";
+      state.traceTimer = window.setInterval(() => {
+        const trace = selectedTrace();
+        if (!trace || state.traceStepIndex >= trace.trace.length - 1) {
+          stopTracePlayback();
+          return;
+        }
+        setTraceStep(state.traceStepIndex + 1);
+      }, 650);
+    });
+  }
+  setTraceIndex(initial);
+}
+
+async function refreshTraceData({ keepAtLatest = false } = {}) {
+  if (!traceUrl || state.traceRefreshBusy) return;
+  state.traceRefreshBusy = true;
+  try {
+    const previous = selectedTrace();
+    const previousStep = state.traceStepIndex;
+    const traces = await readJsonl(traceUrl, true);
+    if (!traces.length) return;
+    state.traces = traces;
+    if (!state.traceControlsReady) {
+      setupTraceControls();
+      return;
+    }
+    if (previous) {
+      const sameTrace = state.traces.findIndex(
+        (trace) => trace.task_id === previous.task_id && trace.mode === previous.mode,
+      );
+      state.traceIndex = sameTrace >= 0 ? sameTrace : Math.min(state.traceIndex, state.traces.length - 1);
+    } else {
+      state.traceIndex = Math.min(state.traceIndex, state.traces.length - 1);
+    }
+    const trace = selectedTrace();
+    const maxStep = Math.max(0, (trace?.trace?.length || 1) - 1);
+    state.traceStepIndex = keepAtLatest ? maxStep : Math.min(previousStep, maxStep);
+    renderTraceOptions();
+    syncPanelToTraceStep();
+    draw();
+  } catch (error) {
+    console.warn("trace refresh failed", error);
+  } finally {
+    state.traceRefreshBusy = false;
   }
 }
 
@@ -345,6 +533,43 @@ function drawCheckpoints(task, panel, project, width, height) {
   return group;
 }
 
+function markedEntries(task, panel) {
+  const trace = selectedTrace();
+  if (trace && trace.task_id !== task.task_id && trace.task_id !== task.source_task_id) return [];
+  const prediction = activeTraceStep()?.observation?.prediction_so_far;
+  if (!prediction) return [];
+
+  if (task.task_type === "route_strip") {
+    const segments = prediction.segments || [];
+    const entries = [];
+    for (const segmentPrediction of segments) {
+      const segment = task.segments.find((item) => item.segment_id === segmentPrediction.segment_id);
+      if (!segment) continue;
+      if (panel !== task && panel.segment_id !== segment.segment_id) continue;
+      for (const [index, label] of (segmentPrediction.turns || []).entries()) {
+        const point = segment.turn_checkpoints?.[label];
+        if (point) entries.push({ label, point, segmentId: segment.segment_id, index: index + 1 });
+      }
+    }
+    return entries;
+  }
+
+  return (prediction.turns || [])
+    .map((label, index) => ({ label, point: task.turn_checkpoints?.[label], index: index + 1 }))
+    .filter((entry) => entry.point);
+}
+
+function drawMarkedCheckpoints(task, panel, project) {
+  const group = el("g");
+  const entries = markedEntries(task, panel);
+  for (const entry of entries) {
+    const [x, y] = project([entry.point.lon, entry.point.lat]);
+    group.append(el("circle", { cx: x, cy: y, r: 9, class: "marked-checkpoint" }));
+    group.append(el("text", { x, y: y + 3.5, "text-anchor": "middle", class: "marked-index" }, String(entry.index)));
+  }
+  return group;
+}
+
 function drawMarkers(panel, project) {
   const group = el("g");
   for (const [key, color, label] of [
@@ -375,7 +600,7 @@ function drawSegmentBoxes(task, project) {
 
 function drawRoutes(task, panel, project) {
   const group = el("g");
-  const result = state.results.get(task.task_id);
+  const result = state.results.get(task.task_id) || selectedTraceResult(task);
   if (toggles.oracle.checked && panel.oracle?.geometry) {
     group.append(el("path", { d: pathData(panel.oracle.geometry, project), class: "route-oracle" }));
   } else if (toggles.oracle.checked && task.oracle?.geometry && panel === task) {
@@ -392,14 +617,56 @@ function drawRoutes(task, panel, project) {
   return group;
 }
 
+function updateTracePanel() {
+  if (!tracePanel || !state.traces.length) return;
+  const trace = selectedTrace();
+  const step = activeTraceStep();
+  const total = trace?.trace?.length || 0;
+  traceStepRange.max = String(Math.max(0, total - 1));
+  traceStepRange.value = String(state.traceStepIndex);
+  traceStepCounter.textContent = total ? `${state.traceStepIndex + 1} / ${total}` : "0 / 0";
+  prevTraceStepButton.disabled = state.traceStepIndex <= 0;
+  nextTraceStepButton.disabled = state.traceStepIndex >= total - 1;
+  if (!step) {
+    traceAction.textContent = "No trace loaded.";
+    traceImage.removeAttribute("src");
+    return;
+  }
+  const metrics = step.observation?.metrics;
+  const score = metrics?.score == null ? "" : `\nscore=${Number(metrics.score).toFixed(3)}`;
+  const error = step.error ? `\nerror=${step.error}` : "";
+  traceAction.textContent = `${actionLabel(step.action)}${score}${error}`;
+  const image = step.observation?.view?.image;
+  if (image) {
+    traceImage.src = repoUrl(image);
+    traceImage.hidden = false;
+  } else {
+    traceImage.removeAttribute("src");
+    traceImage.hidden = true;
+  }
+}
+
 function updateMetrics(task) {
-  const result = state.results.get(task.task_id);
+  const result = state.results.get(task.task_id) || selectedTraceResult(task);
   const prediction = state.predictions.get(task.task_id);
+  const trace = selectedTrace();
+  const traceMatchesTask = trace && (trace.task_id === task.task_id || trace.task_id === task.source_task_id);
+  const traceStep = traceMatchesTask ? activeTraceStep() : null;
+  const traceMetrics = traceStep?.observation?.metrics;
   const rows = [
     metric("Type", task.task_type || "flat"),
     metric("Distance", `${Math.round(task.oracle?.distance_m || 0)} m`),
   ];
   if (task.task_type === "route_strip") rows.push(metric("Segments", String(task.segments.length)));
+  if (traceStep) {
+    rows.push(metric("Trace Action", actionLabel(traceStep.action)));
+    rows.push(metric("Trace Step", `${state.traceStepIndex + 1} / ${selectedTrace()?.trace?.length || 0}`));
+  }
+  if (traceMetrics) {
+    rows.push(metric("Trace Score", Number(traceMetrics.score || 0).toFixed(3)));
+    rows.push(metric("Trace Valid", traceMetrics.valid_route ? "yes" : "no"));
+    rows.push(metric("Trace Turns", `${traceMetrics.num_predicted_turns || 0} / ${traceMetrics.num_gold_turns || 0}`));
+  }
   if (result) {
     rows.push(metric("Score", Number(result.score || 0).toFixed(3)));
     rows.push(metric("Valid Route", result.valid_route ? "yes" : "no"));
@@ -432,9 +699,11 @@ function draw() {
   viewport.append(drawSegmentBoxes(task, project));
   viewport.append(drawRoutes(task, panel, project));
   viewport.append(drawCheckpoints(task, panel, project, width, height));
+  viewport.append(drawMarkedCheckpoints(task, panel, project));
   viewport.append(drawMarkers(panel, project));
   applyViewportTransform();
   svg.append(viewport);
+  updateTracePanel();
   updateMetrics(task);
 }
 
@@ -486,8 +755,13 @@ async function main() {
   state.tasks = await readJsonl(taskUrl);
   for (const prediction of await readJsonl(predictionUrl, true)) state.predictions.set(prediction.task_id, prediction);
   for (const result of await readJsonl(resultUrl, true)) state.results.set(result.task_id, result);
-  subtitle.textContent = `${state.tasks.length} tasks from ${taskUrl}`;
+  state.traces = await readJsonl(traceUrl, true);
+  const traceText = state.traces.length ? ` · ${state.traces.length} CUA traces` : "";
+  subtitle.textContent = `${state.tasks.length} tasks from ${taskUrl}${traceText}`;
   setupSelectors();
+  if (tracePoll && traceUrl) {
+    window.setInterval(() => refreshTraceData({ keepAtLatest: !state.traceTimer }), 2000);
+  }
   draw();
 }
 

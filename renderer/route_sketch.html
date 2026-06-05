@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RouteRL Sketch Prototype</title>
+    <link rel="stylesheet" href="route_sketch.css" />
+  </head>
+  <body>
+    <main class="app">
+      <aside class="side">
+        <header>
+          <h1>Route Sketch</h1>
+          <p id="subtitle">Loading benchmark task...</p>
+        </header>
+
+        <label class="field">
+          <span>Task</span>
+          <select id="taskSelect"></select>
+        </label>
+
+        <div class="row">
+          <button type="button" id="prevTask">Previous</button>
+          <span id="taskCounter">0 / 0</span>
+          <button type="button" id="nextTask">Next</button>
+        </div>
+
+        <section class="panel">
+          <h2>Tools</h2>
+          <div class="tool-grid">
+            <button type="button" id="overviewTool">observe_overview</button>
+            <button type="button" id="inspectTool">inspect</button>
+            <button type="button" id="previewTool">preview_route</button>
+            <button type="button" id="finishTool">finish</button>
+          </div>
+          <label class="check">
+            <input type="checkbox" id="debugGoldToggle" />
+            <span>debug: show gold route</span>
+          </label>
+        </section>
+
+        <section class="panel">
+          <h2>Draft Turns</h2>
+          <div id="draftChips" class="chips"></div>
+          <textarea id="draftInput" spellcheck="false" rows="3" placeholder='["T6","T21"]'></textarea>
+          <div class="row">
+            <button type="button" id="applyDraft">edit_route</button>
+            <button type="button" id="clearDraft">Clear</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Inspector</h2>
+          <label class="field compact">
+            <span>Label or grid cell</span>
+            <input id="inspectInput" placeholder="T6 or B2" />
+          </label>
+          <div id="inspectStatus" class="status">Click a checkpoint or grid cell, then inspect.</div>
+        </section>
+
+        <section class="panel">
+          <h2>Preview</h2>
+          <dl id="previewMetrics" class="metrics"></dl>
+          <pre id="toolLog" class="log"></pre>
+        </section>
+      </aside>
+
+      <section class="map-wrap">
+        <div class="map-head">
+          <div>
+            <strong id="modeLabel">Overview</strong>
+            <span id="taskLabel"></span>
+          </div>
+          <div class="legend">
+            <span><i class="swatch graph"></i>roads</span>
+            <span><i class="swatch draft"></i>draft preview</span>
+            <span><i class="swatch gold"></i>gold debug</span>
+          </div>
+        </div>
+        <svg id="map" role="img" aria-label="Interactive route sketch map"></svg>
+      </section>
+    </main>
+
+    <script type="module" src="route_sketch.js?v=1"></script>
+  </body>
+</html>
